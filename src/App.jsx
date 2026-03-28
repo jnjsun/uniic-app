@@ -1560,8 +1560,26 @@ function PodScheda({ ep, role, salvati, onToggleSalva, playing, playingEp, onPla
     </div>}
   </div>);
 }
-function PodcastSection({ role, isAdmin }) {
-  const [episodi,setEpisodi]=useState(EPISODI_D); const [proposte,setProposte]=useState(POD_PROPOSTE_D);
+function PodcastSection({ role, isAdmin }) {useEffect(() => {
+  async function carica() {
+    const { data, error } = await supabase.from('episodi').select('*');
+    if (error) { console.log('Errore:', error); return; }
+    const mappati = data.map(e => ({
+      ...e,
+      desc: e.descrizione,
+      dataObj: e.data_obj,
+      data: e.data_pub,
+      stelleMedia: e.stelle_media,
+      nRecensioni: e.n_recensioni,
+      ospiti: typeof e.ospiti === 'string' ? JSON.parse(e.ospiti) : e.ospiti,
+      risorse: typeof e.risorse === 'string' ? JSON.parse(e.risorse) : e.risorse,
+      commenti: typeof e.commenti === 'string' ? JSON.parse(e.commenti) : e.commenti,
+    }));
+    setEpisodi(mappati);
+  }
+  carica();
+}, []);
+  const [episodi,setEpisodi]=useState([]); const [proposte,setProposte]=useState(POD_PROPOSTE_D);
   const [salvati,setSalvati]=useState([3]); const [filterFormato,setFilterFormato]=useState("tutti");
   const [filterTema,setFilterTema]=useState("tutti"); const [showSalvati,setShowSalvati]=useState(false);
   const [selected,setSelected]=useState(null); const [adminView,setAdminView]=useState("lista");
