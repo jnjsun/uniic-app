@@ -1098,7 +1098,7 @@ useEffect(() => {
   }
   carica();
 }, []);
-  const [convenzioni,setConvenzioni]=useState([]); const [proposte,setProposte]=useState(CONV_PROPOSTE_D);
+  const [convenzioni,setConvenzioni]=useState([] ); const [proposte,setProposte]=useState(CONV_PROPOSTE_D);
   const [preferiti,setPreferiti]=useState([3,5]); const [filtroCateg,setFiltroCateg]=useState("Tutte");
   const [showFav,setShowFav]=useState(false); const [showFilters,setShowFilters]=useState(false);
   const [selected,setSelected]=useState(null); const [adminView,setAdminView]=useState("lista");
@@ -1288,8 +1288,24 @@ function NLLettura({ art, role, salvati, onToggleSalva, onBack, isAdmin, setArti
     </Box>}
   </div>);
 }
-function NewsletterSection({ role, isAdmin }) {
-  const [articoli,setArticoli]=useState(NEWS_D); const [notifiche,setNotifiche]=useState(NL_NOTIFICHE_D);
+function NewsletterSection({ role, isAdmin }) {useEffect(() => {
+  async function carica() {
+    const { data, error } = await supabase.from('articoli').select('*');
+    if (error) { console.log('Errore:', error); return; }
+    const mappati = data.map(a => ({
+      ...a,
+      data: a.data_pub,
+      dataObj: a.data_obj,
+      salvatiBool: false,
+      reazioni: typeof a.reazioni === 'string' ? JSON.parse(a.reazioni) : a.reazioni,
+      commenti: typeof a.commenti === 'string' ? JSON.parse(a.commenti) : a.commenti,
+      foto: typeof a.foto === 'string' ? JSON.parse(a.foto) : (a.foto || []),
+    }));
+    setArticoli(mappati);
+  }
+  carica();
+}, []);
+  const [articoli,setArticoli]=useState([]); const [notifiche,setNotifiche]=useState(NL_NOTIFICHE_D);
   const [selected,setSelected]=useState(null); const [filterCat,setFilterCat]=useState("tutti");
   const [filterTipo,setFilterTipo]=useState("tutti"); const [salvati,setSalvati]=useState([2]);
   const [showSalvati,setShowSalvati]=useState(false); const [showNotif,setShowNotif]=useState(false);
