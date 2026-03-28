@@ -138,49 +138,6 @@ const VIS = {
 };
 const see = (field, role) => VIS[field]?.includes(role)??false;
 
-const SOCI_D = [
-  { id:1,initials:"CW",colorAccent:C.red,nome:"Chen Wei",eta:42,nazionalita:"Italo-cinese",citta:"Milano",
-    email:"chen.wei@cwimport.it",telefono:"+39 02 1234567",linkedin:"linkedin.com/in/chenwei",
-    impresa_nome:"CW Import Export SRL",impresa_settore:"Import/Export",impresa_sito:"cwimport.it",piva:"IT04521830152",
-    ruolo_uniic:"Direttivo",tipo:"direttivo",anno_iscritto:2021,hobby:["Tennis","Fotografia"],
-    famiglia:{coniuge:"Lin Mei",figli:2},
-    storico:[{anno:2021,quota:"€ 300",stato:"Pagato",tipo:"Ordinario"},{anno:2022,quota:"€ 300",stato:"Pagato",tipo:"Ordinario"},{anno:2023,quota:"€ 500",stato:"Pagato",tipo:"Sostenitore"},{anno:2024,quota:"€ 500",stato:"Pagato",tipo:"Sostenitore"},{anno:2025,quota:"€ 800",stato:"Pagato",tipo:"Direttivo"}] },
-  { id:2,initials:"WB",colorAccent:"#8E44AD",nome:"Wu Biman",eta:38,nazionalita:"Cinese",citta:"Prato",
-    email:"biman@wufashion.it",telefono:"+39 0574 987654",linkedin:"linkedin.com/in/wubiman",
-    impresa_nome:"Wu Fashion Milano SRL",impresa_settore:"Moda & Tessile",impresa_sito:"wufashion.it",piva:"IT07823940487",
-    ruolo_uniic:"Consigliere",tipo:"direttivo",anno_iscritto:2020,hobby:["Moda sostenibile","Yoga"],
-    famiglia:{coniuge:"Zhou Xian",figli:1},
-    storico:[{anno:2020,quota:"€ 300",stato:"Pagato",tipo:"Ordinario"},{anno:2021,quota:"€ 300",stato:"Pagato",tipo:"Ordinario"},{anno:2022,quota:"€ 500",stato:"Pagato",tipo:"Sostenitore"},{anno:2025,quota:"€ 800",stato:"Pagato",tipo:"Direttivo"}] },
-  { id:3,initials:"LJ",colorAccent:"#E67E22",nome:"Lin Jie",eta:45,nazionalita:"Italo-cinese",citta:"Milano",
-    email:"lin.jie@lamian.it",telefono:"+39 02 9876543",linkedin:"linkedin.com/in/linjie",
-    impresa_nome:"Lamian SRL",impresa_settore:"Ristorazione",impresa_sito:"lamian.it",piva:"IT09234560152",
-    ruolo_uniic:"Sostenitore",tipo:"sostenitore",anno_iscritto:2022,hobby:["Cucina","Golf"],
-    famiglia:{coniuge:"Zhang Fang",figli:3},
-    storico:[{anno:2022,quota:"€ 300",stato:"Pagato",tipo:"Ordinario"},{anno:2025,quota:"€ 500",stato:"Pagato",tipo:"Sostenitore"}] },
-  { id:4,initials:"ZF",colorAccent:"#16A085",nome:"Zhang Fan",eta:51,nazionalita:"Cinese",citta:"Roma",
-    email:"z.fan@zhanglogistics.it",telefono:"+39 06 5432109",linkedin:"linkedin.com/in/zhangfan",
-    impresa_nome:"Zhang Logistics SRL",impresa_settore:"Logistica",impresa_sito:"zhanglogistics.it",piva:"IT11456780581",
-    ruolo_uniic:"Sostenitore",tipo:"sostenitore",anno_iscritto:2019,hobby:["Scacchi","Ciclismo"],
-    famiglia:{coniuge:null,figli:1,note:"Vedovo"},
-    storico:[{anno:2019,quota:"€ 150",stato:"Pagato",tipo:"Ordinario"},{anno:2025,quota:"€ 500",stato:"Pagato",tipo:"Sostenitore"}] },
-  { id:5,initials:"HY",colorAccent:"#C0392B",nome:"Hu Yinyi",eta:34,nazionalita:"Cinese",citta:"Firenze",
-    email:"hu.yinyi@haruka.it",telefono:"+39 055 6543210",linkedin:"",
-    impresa_nome:"Haruka di Hu Yinyi",impresa_settore:"Estetica & Benessere",impresa_sito:"",piva:"IT04987650488",
-    ruolo_uniic:"Ordinario",tipo:"ordinario",anno_iscritto:2023,hobby:["Pittura","Meditazione"],
-    famiglia:{coniuge:null,figli:0,note:"Nubile"},
-    storico:[{anno:2023,quota:"€ 300",stato:"Pagato",tipo:"Ordinario"},{anno:2025,quota:"€ 300",stato:"In attesa",tipo:"Ordinario"}] },
-  { id:6,initials:"ZL",colorAccent:"#2471A3",nome:"Zhao Liuchao",eta:47,nazionalita:"Italo-cinese",citta:"Milano",
-    email:"zhao@worldmart.it",telefono:"+39 02 3456789",linkedin:"linkedin.com/in/zhaoliuchao",
-    impresa_nome:"Worldmart SRL",impresa_settore:"GDO & Retail",impresa_sito:"worldmart.it",piva:"IT08765430152",
-    ruolo_uniic:"Sostenitore",tipo:"sostenitore",anno_iscritto:2020,hobby:["Tennis","Vino"],
-    famiglia:{coniuge:"Xu Min",figli:2},
-    storico:[{anno:2020,quota:"€ 300",stato:"Pagato",tipo:"Ordinario"},{anno:2025,quota:"€ 500",stato:"Pagato",tipo:"Sostenitore"}] },
-];
-const MSGS_D = {
-  2:[{da:"me",testo:"Ciao Biman, hai visto il programma del Forum?",ora:"ieri 18:42"},{da:"loro",testo:"Sì, sono già iscritta!",ora:"ieri 19:10"}],
-  3:[{da:"loro",testo:"Chen, puoi passarmi i contatti del fornitore di vini?",ora:"lun 10:15"},{da:"me",testo:"Certo, ti mando tutto.",ora:"lun 10:45"}],
-};
-
 // ─── EVENTI ───────────────────────────────────────────────────────────────────
 const EV_TIPI = {
   forum:        {label:"Forum",         color:C.red,    icon:"🏛️"},
@@ -189,79 +146,8 @@ const EV_TIPI = {
   istituzionale:{label:"Istituzionale", color:C.orange, icon:"🏮"},
   networking:   {label:"Networking",    color:C.green,  icon:"🤝"},
 };
-const EVENTI_D = [
-  { id:1,tipo:"forum",accesso:"tutti",titolo:"UNIIC Forum 2026",dataLabel:"15 Aprile 2026",data:"2026-04-15",orario:"09:00–18:00",luogo:"Palazzo Reale, Milano",prezzo:0,posti:120,iscritti:112,waitlist:[],
-    desc:"Grande appuntamento annuale. Tavole rotonde, relatori istituzionali e cocktail di chiusura.",
-    programma:[{ora:"09:00",voce:"Registrazione e welcome coffee"},{ora:"10:00",voce:"Apertura istituzionale"},{ora:"11:00",voce:"Tavola rotonda: Commercio Italia-Cina"},{ora:"13:00",voce:"Pranzo networking"},{ora:"17:30",voce:"Cocktail di chiusura"}],
-    iscrizioni:[{id:1,nome:"Chen Wei",tipo:"direttivo",ospiti:0,pagato:true,importo:0,giorno:"10/02",stato:"confermato"},{id:2,nome:"Wu Biman",tipo:"direttivo",ospiti:1,pagato:true,importo:0,giorno:"12/02",stato:"confermato"},{id:3,nome:"Lin Jie",tipo:"sostenitore",ospiti:0,pagato:false,importo:0,giorno:"01/03",stato:"in attesa pag."}],
-    tavoli:null,survey:{inviato:false,risposte:0,media:null} },
-  { id:2,tipo:"gala",accesso:"sostenitore",titolo:"UNIIC Gala Night 2026",dataLabel:"22 Maggio 2026",data:"2026-05-22",orario:"19:30–00:00",luogo:"Four Seasons Hotel, Milano",prezzo:180,posti:80,iscritti:78,waitlist:["Zhao Liuchao","Sun Jian"],
-    desc:"La cena di gala più attesa. Dress code: Black tie. Menu degustazione con vini selezionati.",
-    programma:[{ora:"19:30",voce:"Cocktail di benvenuto"},{ora:"20:30",voce:"Cena di gala"},{ora:"22:30",voce:"Premiazioni UNIIC 2026"},{ora:"23:00",voce:"Musica dal vivo"}],
-    iscrizioni:[{id:1,nome:"Chen Wei",tipo:"direttivo",ospiti:1,pagato:true,importo:360,giorno:"01/03",stato:"confermato"},{id:2,nome:"Wu Biman",tipo:"direttivo",ospiti:0,pagato:true,importo:180,giorno:"05/03",stato:"confermato"},{id:3,nome:"Lin Jie",tipo:"sostenitore",ospiti:0,pagato:false,importo:180,giorno:"10/03",stato:"in attesa pag."}],
-    tavoli:[{nome:"Tavolo Presidenza",posti:10,liberi:4},{nome:"Tavolo Sostenitori A",posti:10,liberi:6}],
-    survey:{inviato:true,risposte:34,media:4.6} },
-  { id:3,tipo:"workshop",accesso:"tutti",titolo:"Workshop: Export in Cina",dataLabel:"10 Giugno 2026",data:"2026-06-10",orario:"14:00–17:30",luogo:"Talent Garden, Milano",prezzo:50,posti:40,iscritti:28,waitlist:[],
-    desc:"Normative doganali, canali digitali (Tmall, JD.com) e strategie di marketing.",
-    programma:[{ora:"14:00",voce:"Il mercato cinese nel 2026"},{ora:"14:30",voce:"Normative e certificazioni"},{ora:"15:15",voce:"Canali digitali"},{ora:"17:00",voce:"Q&A e networking"}],
-    iscrizioni:[{id:1,nome:"Hu Yinyi",tipo:"ordinario",ospiti:0,pagato:true,importo:50,giorno:"20/04",stato:"confermato"}],
-    tavoli:null,survey:{inviato:false,risposte:0,media:null} },
-  { id:4,tipo:"networking",accesso:"tutti",titolo:"Aperitivo di Primavera UNIIC",dataLabel:"2 Aprile 2026",data:"2026-04-02",orario:"18:30–21:00",luogo:"Chateau Du Fan, Via Sarpi, Milano",prezzo:0,posti:60,iscritti:44,waitlist:[],
-    desc:"Aperitivo informale offerto dall'associazione. Perfetto per nuovi contatti.",
-    programma:[{ora:"18:30",voce:"Arrivo e registrazione"},{ora:"19:00",voce:"Speed networking"},{ora:"20:00",voce:"Aperitivo libero"}],
-    iscrizioni:[{id:1,nome:"Hu Yinyi",tipo:"ordinario",ospiti:0,pagato:true,importo:0,giorno:"15/03",stato:"confermato"}],
-    tavoli:null,survey:{inviato:false,risposte:0,media:null} },
-  { id:5,tipo:"istituzionale",accesso:"tutti",titolo:"Capodanno Cinese 2027",dataLabel:"29 Gennaio 2027",data:"2027-01-29",orario:"18:00–23:00",luogo:"Teatro Dal Verme, Milano",prezzo:120,posti:300,iscritti:87,waitlist:[],
-    desc:"Celebrazione del nuovo anno lunare. Performance tradizionali, cena di gala e brindisi.",
-    programma:[{ora:"18:00",voce:"Cocktail di benvenuto"},{ora:"19:00",voce:"Danza del drago"},{ora:"20:00",voce:"Cena di gala"},{ora:"22:45",voce:"Countdown anno nuovo"}],
-    iscrizioni:[{id:1,nome:"Chen Wei",tipo:"direttivo",ospiti:2,pagato:true,importo:360,giorno:"01/10",stato:"confermato"}],
-    tavoli:null,survey:{inviato:false,risposte:0,media:null} },
-];
 
 // ─── CONVENZIONI ──────────────────────────────────────────────────────────────
-const CONV_D = [
-  { id:1,attiva:true,nuova:true,nome:"Banca Intesa Sanpaolo",categoria:"Banca",citta:"Milano",accesso:"tutti",icon:"🏦",colore:"#1a5276",
-    titolo_breve:"Canone zero + tasso agevolato mutui",desc:"Conto corrente Business a canone zero. Tasso preferenziale su finanziamenti commerciali.",
-    condizioni:"Valido per nuove aperture entro il 31/12/2026. Non cumulabile con altre promozioni.",
-    scadenza:"31/12/2026",attivazione:"contatto",codice:null,link:null,
-    contatto_nome:"Filiale Milano Sarpi",contatto_tel:"02 8788 1000",contatto_email:"sarpi@intesasanpaolo.it",
-    utilizzi:34,preferiti:12,statistiche:{mensili:[8,12,15,22,28,34],mesi:["Ott","Nov","Dic","Gen","Feb","Mar"]} },
-  { id:2,attiva:true,nuova:false,nome:"Generali Assicurazioni",categoria:"Assicurazione",citta:"Milano",accesso:"sostenitore",icon:"🛡️",colore:"#922b21",
-    titolo_breve:"Sconto 20% su polizze aziendali",desc:"Sconto su RC Professionale, Tutela Legale e Multirischio per imprese.",
-    condizioni:"Sconto applicabile al rinnovo o nuova stipula. Solo per titolari di impresa.",
-    scadenza:"30/06/2026",attivazione:"codice",codice:"UNIIC-GEN-2026",link:null,
-    contatto_nome:"Agenzia Milano Centro",contatto_tel:"02 7600 4321",contatto_email:"milano@generali.it",
-    utilizzi:21,preferiti:18,statistiche:{mensili:[3,5,7,10,14,21],mesi:["Ott","Nov","Dic","Gen","Feb","Mar"]} },
-  { id:3,attiva:true,nuova:false,nome:"Studio Scaletti & Associati",categoria:"Legale",citta:"Milano",accesso:"tutti",icon:"⚖️",colore:"#1e8449",
-    titolo_breve:"Prima consulenza legale gratuita",desc:"Un'ora di consulenza gratuita. Tariffe ridotte del 15% su pratiche societarie. Supporto bilingue.",
-    condizioni:"Prima consulenza di 60 minuti gratuita. Successivi interventi con tariffa agevolata del 15%.",
-    scadenza:"31/12/2026",attivazione:"link",codice:null,link:"https://scaletti-notai.it/uniic",
-    contatto_nome:"Studio Scaletti",contatto_tel:"02 7654 9832",contatto_email:"info@scaletti-notai.it",
-    utilizzi:47,preferiti:29,statistiche:{mensili:[5,9,14,22,31,47],mesi:["Ott","Nov","Dic","Gen","Feb","Mar"]} },
-  { id:4,attiva:true,nuova:true,nome:"Atlas SRL – Software Gestionale",categoria:"Tech",citta:"Tutte",accesso:"tutti",icon:"💻",colore:"#1f618d",
-    titolo_breve:"Licenza Premium gratuita 12 mesi",desc:"Software gestionale cloud per PMI. Interfaccia in italiano e cinese.",
-    condizioni:"Licenza Premium gratuita per il primo anno (valore €890). Dal secondo anno -30%.",
-    scadenza:"30/09/2026",attivazione:"codice",codice:"ATLAS-UNIIC-PRO",link:"https://atlassrl.it/uniic",
-    contatto_nome:"Atlas SRL – Sales",contatto_tel:"02 9823 1100",contatto_email:"support@atlassrl.it",
-    utilizzi:19,preferiti:22,statistiche:{mensili:[1,3,6,10,14,19],mesi:["Ott","Nov","Dic","Gen","Feb","Mar"]} },
-  { id:5,attiva:true,nuova:false,nome:"Hotel Gallia Milano",categoria:"Hospitality",citta:"Milano",accesso:"sostenitore",icon:"🏨",colore:"#b7950b",
-    titolo_breve:"Tariffa corporate -25% + Spa inclusa",desc:"Tariffa esclusiva per soggiorni soci UNIIC con accesso Spa e late check-out.",
-    condizioni:"Prenotazione minimo 72h prima. Non cumulabile con offerte flash.",
-    scadenza:"31/03/2027",attivazione:"codice",codice:"UNIIC-GALLIA25",link:"https://gallia.it/uniic",
-    contatto_nome:"Hotel Gallia – Corporate",contatto_tel:"02 6785 1234",contatto_email:"corporate@gallia.it",
-    utilizzi:15,preferiti:31,statistiche:{mensili:[1,3,5,8,11,15],mesi:["Ott","Nov","Dic","Gen","Feb","Mar"]} },
-  { id:6,attiva:false,nuova:false,nome:"Centro Medico Liren",categoria:"Salute",citta:"Milano",accesso:"tutti",icon:"🏥",colore:"#1a7a4a",
-    titolo_breve:"Visita specialistica a tariffa ridotta",desc:"Centro medico bilingue. Tariffa ridotta del 25% su visite specialistiche. Sospesa per rinnovo.",
-    condizioni:"Convenzione temporaneamente sospesa. Ripresa prevista entro giugno 2026.",
-    scadenza:"30/06/2026",attivazione:"contatto",codice:null,link:null,
-    contatto_nome:"Centro Medico Liren",contatto_tel:"02 3456 1122",contatto_email:"info@centroliren.it",
-    utilizzi:8,preferiti:6,statistiche:{mensili:[1,2,3,4,6,8],mesi:["Ott","Nov","Dic","Gen","Feb","Mar"]} },
-];
-const CONV_PROPOSTE_D = [
-  { id:101,stato:"in_attesa",data:"15/03/2026",socio:"Lin Jie",avatar:"LJ",colore:"#E67E22",nome:"Lamian SRL",categoria:"F&B",citta:"Milano",desc:"Sconto del 15% su tutti i pasti per i soci UNIIC nel nostro ristorante di Via Sarpi.",contatto:"lin.jie@lamian.it" },
-  { id:102,stato:"in_attesa",data:"20/03/2026",socio:"Zhao Liuchao",avatar:"ZL",colore:"#2471A3",nome:"Worldmart SRL",categoria:"F&B",citta:"Milano",desc:"Distribuzione prodotti alimentari asiatici all'ingrosso. Sconto del 20% per soci UNIIC.",contatto:"zhao@worldmart.it" },
-  { id:103,stato:"approvata",data:"05/03/2026",socio:"Hu Yinyi",avatar:"HY",colore:"#C0392B",nome:"Haruka di Hu Yinyi",categoria:"Salute",citta:"Firenze",desc:"Trattamenti estetici con sconto del 30% per i soci UNIIC.",contatto:"hu.yinyi@haruka.it" },
-];
 const CONV_CATEGORIE = ["Tutte","Banca","Assicurazione","Legale","Tech","Hospitality","Salute","F&B","Formazione"];
 const CONV_CITTA = ["Tutte","Milano","Roma","Firenze","Prato","Napoli"];
 
@@ -284,52 +170,6 @@ const NL_TIPI = [
   {id:"fotoreport",label:"Foto Report",icon:"📸"},
   {id:"rassegna",label:"Rassegna Stampa",icon:"📰"},
 ];
-const NEWS_D = [
-  { id:1,tipo:"articolo",categoria:"uniic",accesso:"tutti",
-    titolo:"UNIIC al Forum italo-cinese di Roma: le nostre proposte",occhiello:"Report dall'evento",
-    testo:"La delegazione UNIIC ha partecipato al Forum Bilaterale Italia-Cina di Roma con una presenza istituzionale di primo piano. Il Presidente Chen Wei ha presentato un documento programmatico in cinque punti.\n\nDurante i lavori, UNIIC ha incontrato rappresentanti del Ministero del Made in Italy, della Camera di Commercio Italia-Cina e diverse delegazioni regionali cinesi. Il confronto ha portato all'avvio di tre tavoli di lavoro permanenti.\n\nIl prossimo appuntamento è a Shanghai a giugno 2026.",
-    autore:"Redazione UNIIC",data:"2026-03-25",dataObj:"2026-03-25",
-    pubblicato:true,letture:312,tempoLettura:"4 min",salvatiBool:false,
-    reazioni:{fire:14,clap:22,like:41},
-    commenti:[{autore:"Wu Biman",avatar:"WB",colore:"#8E44AD",testo:"Ottimo risultato!",data:"25/03"}],
-    img:"🏛️",fonte:null },
-  { id:2,tipo:"rassegna",categoria:"geopolitica",accesso:"tutti",
-    titolo:"Dazi USA-Cina 2026: impatto concreto sulle PMI italo-cinesi",occhiello:"Rassegna stampa · Sole 24 Ore, Reuters",
-    testo:"La nuova tornata di dazi americani sui prodotti cinesi crea uno scenario complesso. Secondo Reuters, i settori più colpiti in Italia saranno elettronica di consumo e componentistica auto.\n\nIl Sole 24 Ore segnala opportunità per le imprese italiane che esportano in Cina: la svalutazione del renminbi rende i prodotti italiani relativamente meno cari.\n\nRaccomandazione: diversificare i fornitori su più paesi per ridurre la concentrazione di rischio.",
-    autore:"Rassegna a cura di Redazione UNIIC",data:"2026-03-22",dataObj:"2026-03-22",
-    pubblicato:true,letture:489,tempoLettura:"6 min",salvatiBool:true,
-    reazioni:{fire:8,clap:17,like:56},
-    commenti:[{autore:"Lin Jie",avatar:"LJ",colore:"#E67E22",testo:"Analisi molto utile!",data:"22/03"}],
-    img:"🌐",fonte:"Sole 24 Ore · Reuters · Xinhua" },
-  { id:3,tipo:"fotoreport",categoria:"fotoreport",accesso:"tutti",
-    titolo:"Gala Night 2025: i momenti più belli della serata",occhiello:"Foto Report · 18 novembre 2025",
-    testo:"Una serata indimenticabile al Four Seasons di Milano ha riunito oltre 120 soci UNIIC.\n\nMomento clou: le premiazioni annuali con il riconoscimento 'Imprenditore dell'Anno' assegnato a Zhao Liuchao.\n\nLa serata si è conclusa con musica dal vivo e brindisi di auguri.",
-    autore:"Foto: Studio Visivo Milano",data:"2025-11-25",dataObj:"2025-11-25",
-    pubblicato:true,letture:701,tempoLettura:"2 min",salvatiBool:false,
-    reazioni:{fire:38,clap:54,like:89},
-    commenti:[{autore:"Chen Wei",avatar:"CW",colore:C.red,testo:"Serata memorabile!",data:"25/11"}],
-    foto:["🥂","🍽️","🎤","🏆","🎵","🌟"],img:"📸",fonte:null },
-  { id:4,tipo:"comunicato",categoria:"comunicato",accesso:"tutti",
-    titolo:"Convocazione Assemblea Ordinaria – 15 Aprile 2026",occhiello:"Comunicato ufficiale",
-    testo:"Il Presidente convoca i Soci all'Assemblea Ordinaria il 15 Aprile 2026, ore 9:00, presso Palazzo Reale, Milano.\n\nORDINE DEL GIORNO:\n1. Approvazione bilancio consuntivo 2025\n2. Bilancio preventivo 2026-2029\n3. Relazione del Presidente\n4. Programma Presidenza 2026-2029\n5. Varie ed eventuali",
-    autore:"Segreteria UNIIC",data:"2026-03-15",dataObj:"2026-03-15",
-    pubblicato:true,letture:156,tempoLettura:"2 min",salvatiBool:false,
-    reazioni:{fire:2,clap:5,like:28},commenti:[],img:"📋",fonte:null },
-  { id:5,tipo:"flash",categoria:"flash",accesso:"tutti",
-    titolo:"⚡ Nuova partnership UNIIC-Confcommercio Milano",occhiello:"Flash News",
-    testo:"Firmato oggi l'accordo annuale con Confcommercio Milano. I soci UNIIC avranno accesso gratuito a tutti i corsi di formazione del catalogo 2026 (oltre 40 corsi su digitale, fiscalità, export e management).",
-    autore:"Redazione UNIIC",data:"2026-03-15",dataObj:"2026-03-15",
-    pubblicato:true,letture:198,tempoLettura:"1 min",salvatiBool:false,
-    reazioni:{fire:11,clap:24,like:38},commenti:[],img:"🤝",fonte:null },
-  { id:6,tipo:"articolo",categoria:"finanza",accesso:"sostenitore",
-    titolo:"Renminbi digitale: guida pratica per chi fa business con la Cina",occhiello:"Finanza · Contenuto esclusivo Sostenitore",
-    testo:"Il roll-out dell'e-CNY accelera nel 2026. I pagamenti in e-CNY bypassano il sistema SWIFT, riducendo i tempi da 3-5 giorni a poche ore.\n\nAlcune banche italiane (tra cui Intesa Sanpaolo, convenzionata UNIIC) stanno già attivando wallet dedicati per clienti business.\n\nAttenzione: le operazioni sono tracciate in tempo reale. Consultare un professionista per la compliance fiscale cross-border.",
-    autore:"Avv. Giuseppe Scaletti",data:"2026-03-10",dataObj:"2026-03-10",
-    pubblicato:true,letture:89,tempoLettura:"7 min",salvatiBool:false,
-    reazioni:{fire:6,clap:12,like:21},
-    commenti:[{autore:"Chen Wei",avatar:"CW",colore:C.red,testo:"Articolo fondamentale.",data:"11/03"}],
-    img:"💱",fonte:null },
-];
 const NL_NOTIFICHE_D = [
   {cat:"uniic",attiva:true},{cat:"economia",attiva:true},{cat:"geopolitica",attiva:false},
   {cat:"finanza",attiva:true},{cat:"cultura",attiva:false},{cat:"normative",attiva:true},
@@ -345,67 +185,6 @@ const POD_FORMATI = {
   speciale:     {label:"Speciale",       icon:"⭐",color:C.teal},
 };
 const POD_TEMI = ["Import/Export","Moda","Logistica","Finanza","Geopolitica","Digitale","Normative","Cultura","Startup","Made in Italy"];
-const EPISODI_D = [
-  { id:1,ep:14,formato:"intervista",accesso:"tutti",titolo:"Il futuro dell'import-export italo-cinese dopo i nuovi dazi",
-    ospiti:[{nome:"Zhang Fan",ruolo:"CEO Zhang Logistics SRL",avatar:"ZF",colore:"#16A085"}],conduttore:"Chen Wei",
-    desc:"Conversazione con Zhang Fan sugli scenari aperti dai dazi americani e sulle strategie per proteggere le supply chain nel 2026.",
-    temi:["Import/Export","Logistica","Geopolitica"],durata:"48:22",data:"2026-03-20",dataObj:"2026-03-20",
-    spotify:"https://open.spotify.com/episode/...",youtube:"https://youtube.com/watch?v=...",
-    ascolti:1240,salvataggi:89,stelleMedia:4.7,nRecensioni:34,
-    risorse:[{testo:"Report ICE: Export Italia-Cina 2025",url:"#"},{testo:"Guida doganale UNIIC 2026 (PDF)",url:"#"}],
-    trascrizione:"Zhang Fan: Quello che stiamo vedendo è una biforcazione del mercato. Da un lato produttori cinesi che cercano rientro in Europa tramite intermediari italiani.\n\nChen Wei: Esatto. E questa è la nicchia che UNIIC può occupare. Essere il ponte qualificato tra i due sistemi.",
-    commenti:[{autore:"Lin Jie",avatar:"LJ",colore:"#E67E22",stelle:5,testo:"Episodio fondamentale.",data:"21/03"}],
-    pubblicato:true },
-  { id:2,ep:13,formato:"intervista",accesso:"tutti",titolo:"Imprenditoria femminile tra due culture: sfide e opportunità",
-    ospiti:[{nome:"Wu Biman",ruolo:"Founder Wu Fashion Milano SRL",avatar:"WB",colore:"#8E44AD"}],conduttore:"Chen Wei",
-    desc:"Wu Biman racconta il suo percorso da immigrata di prima generazione a imprenditrice di successo nel settore moda.",
-    temi:["Moda","Made in Italy","Cultura"],durata:"41:15",data:"2026-03-06",dataObj:"2026-03-06",
-    spotify:"https://open.spotify.com/episode/...",youtube:"https://youtube.com/watch?v=...",
-    ascolti:890,salvataggi:61,stelleMedia:4.8,nRecensioni:27,risorse:[{testo:"Wu Fashion Milano – Sito ufficiale",url:"#"}],
-    trascrizione:"Wu Biman: Quando ho aperto nel 2015, nessuna banca mi dava un fido. Non perché il business plan fosse sbagliato, ma perché ero cinese, ero donna e non avevo una rete di relazioni.\n\nChen Wei: E oggi, dieci anni dopo?\n\nWu Biman: Oggi esporto in Cina il made in Italy. Il giro si è completamente ribaltato.",
-    commenti:[{autore:"Hu Yinyi",avatar:"HY",colore:"#C0392B",stelle:5,testo:"Wu Biman è un'ispirazione.",data:"07/03"}],
-    pubblicato:true },
-  { id:3,ep:12,formato:"tavolarotonda",accesso:"tutti",titolo:"Navigare il sistema fiscale italiano: tutto quello che devi sapere",
-    ospiti:[{nome:"Avv. Giuseppe Scaletti",ruolo:"Studio Scaletti & Associati",avatar:"GS",colore:"#1e8449"},{nome:"Lin Jie",ruolo:"Socio UNIIC",avatar:"LJ",colore:"#E67E22"}],conduttore:"Chen Wei",
-    desc:"Tavola rotonda pratica: dai regimi fiscali più convenienti per le PMI alle novità 2026 su IVA e concordato preventivo.",
-    temi:["Normative","Finanza"],durata:"55:44",data:"2026-02-20",dataObj:"2026-02-20",
-    spotify:"https://open.spotify.com/episode/...",youtube:"https://youtube.com/watch?v=...",
-    ascolti:2100,salvataggi:178,stelleMedia:4.9,nRecensioni:67,
-    risorse:[{testo:"Guida fiscale per imprenditori cinesi in Italia (PDF)",url:"#"},{testo:"Studio Scaletti – Contatti",url:"#"}],
-    trascrizione:"Avv. Scaletti: Il concordato preventivo biennale è la novità più importante del 2026 per le PMI.\n\nLin Jie: Io l'ho già aderito. Dopo vent'anni di ansie ogni volta che arrivava una lettera dall'Agenzia, finalmente dormo tranquillo.",
-    commenti:[{autore:"Zhang Fan",avatar:"ZF",colore:"#16A085",stelle:5,testo:"L'episodio più utile della serie.",data:"21/02"}],
-    pubblicato:true },
-  { id:4,ep:11,formato:"spotlight",accesso:"tutti",titolo:"Moda e Made in Italy: la visione di chi vende in Cina",
-    ospiti:[{nome:"Lin Jie",ruolo:"Fondatore Lamian SRL",avatar:"LJ",colore:"#E67E22"}],conduttore:"Wu Biman",
-    desc:"Lin Jie racconta come ha trasformato una piccola attività di import in un bridge tra artigiani italiani e buyer cinesi.",
-    temi:["Moda","Made in Italy","Import/Export"],durata:"37:08",data:"2026-02-06",dataObj:"2026-02-06",
-    spotify:"https://open.spotify.com/episode/...",youtube:"https://youtube.com/watch?v=...",
-    ascolti:756,salvataggi:42,stelleMedia:4.5,nRecensioni:19,risorse:[{testo:"Lamian SRL – Portfolio prodotti",url:"#"}],
-    trascrizione:"Lin Jie: Il segreto è il rapporto diretto con l'artigiano. Il buyer cinese vuole la storia, vuole il volto, vuole il laboratorio.",
-    commenti:[],pubblicato:true },
-  { id:5,ep:15,formato:"report",accesso:"sostenitore",titolo:"Report esclusivo: UNIIC al Forum di Roma – cosa è emerso davvero",
-    ospiti:[{nome:"Chen Wei",ruolo:"Presidente UNIIC",avatar:"CW",colore:C.red}],conduttore:"Wu Biman",
-    desc:"Debriefing riservato ai soci Sostenitore+ sui retroscena del Forum Bilaterale di Roma.",
-    temi:["Geopolitica","Import/Export","Finanza"],durata:"29:50",data:"2026-03-28",dataObj:"2026-03-28",
-    spotify:"https://open.spotify.com/episode/...",youtube:null,
-    ascolti:89,salvataggi:31,stelleMedia:4.9,nRecensioni:12,risorse:[{testo:"Documento programmatico UNIIC per il Forum",url:"#"}],
-    trascrizione:"Chen Wei: Quello che non è stato detto in sala è che tre delle delegazioni regionali cinesi presenti stanno valutando investimenti diretti in Italia nel settore agroalimentare.",
-    commenti:[{autore:"Zhang Fan",avatar:"ZF",colore:"#16A085",stelle:5,testo:"Informazioni preziosissime.",data:"28/03"}],
-    pubblicato:true },
-  { id:6,ep:16,formato:"speciale",accesso:"tutti",titolo:"Speciale Capodanno Cinese: storia, tradizione e business",
-    ospiti:[{nome:"Prof. Laura Bonomi",ruolo:"Sinologa – Università di Milano",avatar:"LB",colore:"#5D6D7E"},{nome:"Zhao Liuchao",ruolo:"Socio UNIIC",avatar:"ZL",colore:"#2471A3"}],conduttore:"Chen Wei",
-    desc:"Episodio speciale: storia e simbolismo delle tradizioni del Capodanno cinese e consigli per i business meeting durante le festività.",
-    temi:["Cultura","Made in Italy"],durata:"44:30",data:"2026-01-29",dataObj:"2026-01-29",
-    spotify:"https://open.spotify.com/episode/...",youtube:"https://youtube.com/watch?v=...",
-    ascolti:1890,salvataggi:134,stelleMedia:4.6,nRecensioni:52,risorse:[{testo:"Guida: fare business durante il Capodanno cinese",url:"#"}],
-    trascrizione:"Prof. Bonomi: Il Capodanno cinese non è solo una festa. È il momento in cui si saldano debiti, si stringono accordi e si ridefiniscono le gerarchie sociali.",
-    commenti:[{autore:"Hu Yinyi",avatar:"HY",colore:"#C0392B",stelle:5,testo:"Episodio bellissimo!",data:"30/01"}],
-    pubblicato:true },
-];
-const POD_PROPOSTE_D = [
-  { id:101,socio:"Hu Yinyi",avatar:"HY",colore:"#C0392B",data:"20/03",titolo:"Il settore estetico cinese in Italia",desc:"Difficoltà burocratiche specifiche per i professionisti di origine cinese.",ospite:"Me stessa",stato:"in_attesa" },
-  { id:102,socio:"Zhao Liuchao",avatar:"ZL",colore:"#2471A3",data:"22/03",titolo:"GDO e distribuzione etnica in Italia",desc:"Trasformazione del settore della grande distribuzione etnica.",ospite:"Zhao Liuchao + esperto GDO",stato:"in_attesa" },
-];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SEZIONE: HOME
@@ -1098,7 +877,7 @@ useEffect(() => {
   }
   carica();
 }, []);
-  const [convenzioni,setConvenzioni]=useState([] ); const [proposte,setProposte]=useState(CONV_PROPOSTE_D);
+  const [convenzioni,setConvenzioni]=useState([] ); const [proposte,setProposte]=useState([]);
   const [preferiti,setPreferiti]=useState([3,5]); const [filtroCateg,setFiltroCateg]=useState("Tutte");
   const [showFav,setShowFav]=useState(false); const [showFilters,setShowFilters]=useState(false);
   const [selected,setSelected]=useState(null); const [adminView,setAdminView]=useState("lista");
@@ -1288,8 +1067,13 @@ function NLLettura({ art, role, salvati, onToggleSalva, onBack, isAdmin, setArti
     </Box>}
   </div>);
 }
-function NewsletterSection({ role, isAdmin }) {useEffect(() => {
-  async function carica() {
+function NewsletterSection({ role, isAdmin }) {
+
+  const [articoli,setArticoli]=useState([]); const [notifiche,setNotifiche]=useState([]);
+  const [selected,setSelected]=useState(null); const [filterCat,setFilterCat]=useState("tutti");
+  const [filterTipo,setFilterTipo]=useState("tutti"); const [salvati,setSalvati]=useState([2]);
+  const [showSalvati,setShowSalvati]=useState(false); const [showNotif,setShowNotif]=useState(false)  
+  useEffect(() => { async function carica() {
     const { data, error } = await supabase.from('articoli').select('*');
     if (error) { console.log('Errore:', error); return; }
     const mappati = data.map(a => ({
@@ -1305,10 +1089,6 @@ function NewsletterSection({ role, isAdmin }) {useEffect(() => {
   }
   carica();
 }, []);
-  const [articoli,setArticoli]=useState([]); const [notifiche,setNotifiche]=useState(NL_NOTIFICHE_D);
-  const [selected,setSelected]=useState(null); const [filterCat,setFilterCat]=useState("tutti");
-  const [filterTipo,setFilterTipo]=useState("tutti"); const [salvati,setSalvati]=useState([2]);
-  const [showSalvati,setShowSalvati]=useState(false); const [showNotif,setShowNotif]=useState(false);
   const toggleSalva=id=>setSalvati(ss=>ss.includes(id)?ss.filter(s=>s!==id):[...ss,id]);
   const pubbl=articoli.filter(a=>a.pubblicato);
   const visible=useMemo(()=>{
@@ -1579,7 +1359,7 @@ function PodcastSection({ role, isAdmin }) {useEffect(() => {
   }
   carica();
 }, []);
-  const [episodi,setEpisodi]=useState([]); const [proposte,setProposte]=useState(POD_PROPOSTE_D);
+  const [episodi,setEpisodi]=useState([]); const [proposte,setProposte]=useState([]);
   const [salvati,setSalvati]=useState([3]); const [filterFormato,setFilterFormato]=useState("tutti");
   const [filterTema,setFilterTema]=useState("tutti"); const [showSalvati,setShowSalvati]=useState(false);
   const [selected,setSelected]=useState(null); const [adminView,setAdminView]=useState("lista");
