@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { supabase } from './supabase.js'
 
 // ─── TEMA ─────────────────────────────────────────────────────────────────────
 const C = {
@@ -568,21 +569,33 @@ function SociProfilo({ socio, role, onBack, onChat }) {
 }
 function SociSection({ role }) {
   const [search, setSearch] = useState("");
+  const [sociDB, setSociDB] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function caricaSoci() {
+      const { data, error } = await supabase.from('soci').select('*');
+      if (error) { console.log('Errore:', error); return; }
+      setSociDB(data);
+      setLoading(false);
+    }
+    caricaSoci();
+  }, []);
   const [filterTipo, setFilterTipo] = useState("tutti");
   const [showFilters, setShowFilters] = useState(false);
   const [selected, setSelected] = useState(null);
   const [chatWith, setChatWith] = useState(null);
   const tcMap = { direttivo:C.red,sostenitore:C.gold,ordinario:C.blue };
-  const filtered = useMemo(() => SOCI_D.filter(s => {
+  const filtered = useMemo(() => sociDB.filter(s => {
     const q=search.toLowerCase();
     return (!q||s.nome.toLowerCase().includes(q)||s.impresa_nome.toLowerCase().includes(q)||s.impresa_settore.toLowerCase().includes(q))
       &&(filterTipo==="tutti"||s.tipo===filterTipo);
-  }),[search,filterTipo]);
-  if(chatWith) return <SociChat socio={chatWith} onBack={() => setChatWith(null)} />;
+}),[sociDB,search,filterTipo]);
+  if(loading) return <div style={{textAlign:"center",padding:40,color:C.muted,fontFamily:F}}>Caricamento...</div>;if(chatWith) return <SociChat socio={chatWith} onBack={() => setChatWith(null)} />;
   if(selected) return <SociProfilo socio={selected} role={role} onBack={() => setSelected(null)} onChat={s=>{setSelected(null);setChatWith(s);}} />;
   return (
     <div>
-      <SecTitle title="Soci UNIIC" sub={`${filtered.length} di ${SOCI_D.length} soci`} />
+      <SecTitle title="Soci UNIIC" sub={`${filtered.length} di ${sociDB.length} soci`} />
       <div style={{ display:"flex",gap:8,marginBottom:10 }}>
         <div style={{ flex:1,position:"relative" }}>
           <span style={{ position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14 }}>🔍</span>
