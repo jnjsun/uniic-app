@@ -908,7 +908,24 @@ function EvScheda({ evento, onBack, isAdmin }) {
   </div>);
 }
 function EventiSection({ isAdmin }) {
-  const [eventi,setEventi]=useState(EVENTI_D); const [filtro,setFiltro]=useState("tutti");
+  const [eventiDB, setEventiDB] = useState([]);
+const [loadingEv, setLoadingEv] = useState(true);
+
+useEffect(() => {
+  async function caricaEventi() {
+    const { data, error } = await supabase.from('eventi').select('*');
+    if (error) { console.log('Errore:', error); return; }
+    const mappati = data.map(e => ({
+      ...e,
+      desc: e.desc_evento,
+      dataObj: e.data,
+    }));
+    setEventi(mappati);
+    setLoadingEv(false);
+  }
+  caricaEventi();
+}, []);
+  const [eventi,setEventi]=useState([]); const [filtro,setFiltro]=useState("tutti");
   const [selected,setSelected]=useState(null); const [showForm,setShowForm]=useState(false);
   const oggi=new Date("2026-03-27");
   const sorted=useMemo(()=>[...eventi].sort((a,b)=>new Date(a.data)-new Date(b.data)),[eventi]);
