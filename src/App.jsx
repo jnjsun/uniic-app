@@ -573,12 +573,17 @@ function SociSection({ role }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function caricaSoci() {
-      const { data, error } = await supabase.from('soci').select('*');
-      if (error) { console.log('Errore:', error); return; }
-      setSociDB(data);
-      setLoading(false);
-    }
+async function caricaSoci() {
+  const { data, error } = await supabase.from('soci').select('*');
+  if (error) { console.log('Errore:', error); return; }
+  const mappati = data.map(s => ({
+    ...s,
+    initials: s.avatar_iniziali,
+    colorAccent: s.avatar_colore,
+  }));
+  setSociDB(mappati);
+  setLoading(false);
+}
     caricaSoci();
   }, []);
   const [filterTipo, setFilterTipo] = useState("tutti");
