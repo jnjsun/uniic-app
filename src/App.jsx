@@ -1089,8 +1089,16 @@ function ConvScheda({ conv, role, preferiti, onToggleFav, onBack }) {
     <Btn v={isFav?"danger":"secondary"} onClick={() => onToggleFav(conv.id)} sx={{ width:"100%" }}>{isFav?"❤️ Rimuovi dai preferiti":"🤍 Salva nei preferiti"}</Btn>
   </div>);
 }
-function ConvenzioniSection({ role, isAdmin }) {
-  const [convenzioni,setConvenzioni]=useState(CONV_D); const [proposte,setProposte]=useState(CONV_PROPOSTE_D);
+function ConvenzioniSection({ role, isAdmin }) {const [convDB, setConvDB] = useState([]);
+useEffect(() => {
+  async function carica() {
+    const { data, error } = await supabase.from('convenzioni').select('*');
+    if (error) { console.log('Errore:', error); return; }
+    setConvenzioni(data);
+  }
+  carica();
+}, []);
+  const [convenzioni,setConvenzioni]=useState([]); const [proposte,setProposte]=useState(CONV_PROPOSTE_D);
   const [preferiti,setPreferiti]=useState([3,5]); const [filtroCateg,setFiltroCateg]=useState("Tutte");
   const [showFav,setShowFav]=useState(false); const [showFilters,setShowFilters]=useState(false);
   const [selected,setSelected]=useState(null); const [adminView,setAdminView]=useState("lista");
