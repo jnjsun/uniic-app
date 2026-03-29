@@ -607,7 +607,7 @@ function EvSurvey({ evento, onBack }) {
     </div>}
   </div>);
 }
-function EvScheda({ evento, onBack, isAdmin }) {
+function EvScheda({ evento, onBack, isAdmin, socioProfilo }) {
   const [sub,setSub]=useState("main"); const [showPag,setShowPag]=useState(false);
   const [iscritto,setIscritto]=useState(evento.iscrizioni.some(i=>i.nome===(socioProfilo?.nome || "Chen Wei")));
   const [calAdded,setCalAdded]=useState(false);
@@ -710,7 +710,7 @@ useEffect(() => {
   const sorted=useMemo(()=>[...eventi].sort((a,b)=>new Date(a.data)-new Date(b.data)),[eventi]);
   const prossimi=sorted.filter(e=>new Date(e.data)>=oggi); const passati=sorted.filter(e=>new Date(e.data)<oggi);
   const filtra=list=>filtro==="tutti"?list:list.filter(e=>e.tipo===filtro);
-  if(selected) return <EvScheda evento={selected} onBack={() => setSelected(null)} isAdmin={isAdmin} />;
+  if(selected) return <EvScheda evento={selected} onBack={() => setSelected(null)} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
   const ECard=({ev}) => {
     const tp=EV_TIPI[ev.tipo]; const sold=ev.iscritti>=ev.posti; const pct=ev.iscritti/ev.posti;
     const isc=ev.iscrizioni.some(i=>i.nome===(socioProfilo?.nome || "Chen Wei"));
@@ -1205,7 +1205,7 @@ function PodMiniPlayer({ ep, playing, onToggle, progress, onSeek }) {
     </div>
   </div>);
 }
-function PodScheda({ ep, role, salvati, onToggleSalva, playing, playingEp, onPlay, onBack, isAdmin }) {
+function PodScheda({ ep, role, salvati, onToggleSalva, playing, playingEp, onPlay, onBack, isAdmin, socioProfilo }) {
   const [sub,setSub]=useState("info"); const [commenti,setCommenti]=useState(ep.commenti);
   const [draft,setDraft]=useState(""); const [draftStelle,setDraftStelle]=useState(0);
   const [shareMenu,setShareMenu]=useState(false);
@@ -1383,7 +1383,7 @@ function PodcastSection({ role, isAdmin, socioProfilo }) {useEffect(() => {
     return list.sort((a,b)=>new Date(b.dataObj)-new Date(a.dataObj));
   },[pubbl,showSalvati,filterFormato,filterTema,salvati]);
   if(selected) return (<div style={{ display:"flex",flexDirection:"column",height:"100%" }}>
-    <PodScheda ep={selected} role={role} salvati={salvati} onToggleSalva={toggleSalva} playing={playing} playingEp={playingEp} onPlay={startPlay} onBack={() => setSelected(null)} isAdmin={isAdmin} />
+    <PodScheda ep={selected} role={role} salvati={salvati} onToggleSalva={toggleSalva} playing={playing} playingEp={playingEp} onPlay={startPlay} onBack={() => setSelected(null)} isAdmin={isAdmin} socioProfilo={socioProfilo} />
     {playingEp&&<PodMiniPlayer ep={playingEp} playing={playing} onToggle={() => setPlaying(p=>!p)} progress={progress} onSeek={setProgress} />}
   </div>);
   if(proponiForm) return (<div>
