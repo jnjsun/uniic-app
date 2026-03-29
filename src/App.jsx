@@ -1529,6 +1529,89 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+function AdminSection({ socioProfilo }) {
+  const [sottoTab, setSottoTab] = useState("soci");
+  const [soci, setSoci] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (sottoTab !== "soci") return;
+    setLoading(true);
+    async function caricaSoci() {
+      const { data, error } = await supabase.from('soci').select('nome, email, tipo, attivo');
+      if (!error && data) setSoci(data);
+      setLoading(false);
+    }
+    caricaSoci();
+  }, [sottoTab]);
+
+  const TABS = ["Soci", "Eventi", "Convenzioni", "Articoli"];
+
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+        <h2 style={{ fontFamily:S, fontSize:22, color:C.text, margin:0 }}>⚙️ Admin</h2>
+        {sottoTab === "soci" && (
+          <button style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+            + Aggiungi socio
+          </button>
+        )}
+      </div>
+
+      <div style={{ display:"flex", gap:6, marginBottom:18 }}>
+        {TABS.map(t => (
+          <button key={t} onClick={() => setSottoTab(t.toLowerCase())} style={{ flex:1, padding:"8px 0", borderRadius:8, border:`1px solid ${sottoTab===t.toLowerCase()?C.gold:C.border}`, background:sottoTab===t.toLowerCase()?`${C.gold}18`:C.surface, color:sottoTab===t.toLowerCase()?C.gold:C.muted, fontFamily:F, fontSize:11, fontWeight:sottoTab===t.toLowerCase()?600:400, cursor:"pointer" }}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {sottoTab === "soci" && (
+        loading
+          ? <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento…</div>
+          : <div style={{ overflowX:"auto" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse", fontFamily:F, fontSize:12 }}>
+                <thead>
+                  <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                    {["Nome","Email","Tipo","Attivo",""].map(h => (
+                      <th key={h} style={{ textAlign:"left", padding:"6px 8px", color:C.muted, fontWeight:600, fontSize:11 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {soci.map((s, i) => (
+                    <tr key={i} style={{ borderBottom:`1px solid ${C.border}22` }}>
+                      <td style={{ padding:"8px 8px", color:C.text }}>{s.nome}</td>
+                      <td style={{ padding:"8px 8px", color:C.muted, fontSize:11 }}>{s.email}</td>
+                      <td style={{ padding:"8px 8px" }}>
+                        <span style={{ background:`${C.gold}22`, color:C.gold, borderRadius:6, padding:"2px 7px", fontSize:10, fontWeight:600 }}>{s.tipo}</span>
+                      </td>
+                      <td style={{ padding:"8px 8px" }}>
+                        <span style={{ color:s.attivo?C.green:C.red, fontSize:13 }}>{s.attivo?"✓":"✗"}</span>
+                      </td>
+                      <td style={{ padding:"8px 4px" }}>
+                        <div style={{ display:"flex", gap:4 }}>
+                          <button style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"3px 8px", color:C.muted, fontFamily:F, fontSize:10, cursor:"pointer" }}>Modifica</button>
+                          <button style={{ background:"none", border:`1px solid ${C.red}44`, borderRadius:6, padding:"3px 8px", color:C.red, fontFamily:F, fontSize:10, cursor:"pointer" }}>Elimina</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {soci.length === 0 && <div style={{ textAlign:"center", color:C.faint, fontFamily:F, fontSize:12, paddingTop:20 }}>Nessun socio trovato.</div>}
+            </div>
+      )}
+
+      {sottoTab !== "soci" && (
+        <div style={{ textAlign:"center", color:C.faint, fontFamily:F, fontSize:13, paddingTop:40 }}>
+          Sezione in sviluppo.
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState("home");
   const [role, setRole] = useState("ordinario");
@@ -1580,6 +1663,7 @@ useEffect(() => {
       case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
+      case "admin":       return <AdminSection socioProfilo={socioProfilo} />;
       default:            return null;
     }
   };
@@ -1607,7 +1691,7 @@ useEffect(() => {
           {renderSection()}
         </div>
         <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
-          {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"}].map(n => (
+          {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},...(role==="direttivo"?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
             <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0" }}>
               <span style={{ fontSize:18 }}>{n.icon}</span>
               <span style={{ fontSize:9, fontFamily:F, color:tab===n.id?C.red:C.muted, fontWeight:tab===n.id?600:400 }}>{n.label}</span>
