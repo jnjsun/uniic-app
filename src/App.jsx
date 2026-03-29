@@ -189,7 +189,7 @@ const POD_TEMI = ["Import/Export","Moda","Logistica","Finanza","Geopolitica","Di
 // ═══════════════════════════════════════════════════════════════════════════════
 // SEZIONE: HOME
 // ═══════════════════════════════════════════════════════════════════════════════
-function HomeSection({ onNav, role, setRole, socioProfilo }) {
+function HomeSection({ onNav, role, socioProfilo }) {
   return (
     <div>
       <div style={{ background:`linear-gradient(135deg,${C.red}22,transparent)`,border:`1px solid ${C.red}33`,borderRadius:16,padding:20,marginBottom:18 }}>
@@ -204,15 +204,6 @@ function HomeSection({ onNav, role, setRole, socioProfilo }) {
             </div>
           ))}
         </div>
-      </div>
-      <div style={{ marginBottom:10,fontSize:10,color:C.faint,fontFamily:F,letterSpacing:.5 }}>CAMBIA VISTA</div>
-      <div style={{ display:"flex",gap:6,marginBottom:20 }}>
-        {["ordinario","sostenitore","direttivo"].map(r => (
-          <button key={r} onClick={() => setRole(r)} style={{ flex:1,padding:"8px 4px",borderRadius:8,cursor:"pointer",fontFamily:F,fontSize:11,fontWeight:600,
-            background:role===r?C.red:C.alt,border:`1px solid ${role===r?C.red:C.border}`,color:role===r?"#fff":C.muted }}>
-            {r.charAt(0).toUpperCase()+r.slice(1)}
-          </button>
-        ))}
       </div>
       <Box sx={{ marginBottom:12,borderLeft:`3px solid ${C.red}`,cursor:"pointer" }} onClick={() => onNav("eventi")}>
         <div style={{ fontSize:10,color:C.muted,fontFamily:F,marginBottom:6 }}>PROSSIMO EVENTO</div>
@@ -1891,7 +1882,7 @@ useEffect(() => {
 
   const renderSection = () => {
     switch(tab) {
-      case "home":        return <HomeSection onNav={setTab} role={role} setRole={setRole} socioProfilo={socioProfilo} />;
+      case "home":        return <HomeSection onNav={setTab} role={role} socioProfilo={socioProfilo} />;
       case "soci":        return <SociSection role={role} />;
       case "convenzioni": return <ConvenzioniSection role={role} isAdmin={isAdmin} />;
       case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} />;
