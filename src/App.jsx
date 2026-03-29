@@ -1694,6 +1694,44 @@ function ArticoloModal({ record, onClose, onSaved }) {
   );
 }
 
+// ── Episodi modal ──────────────────────────────────────────────────────────────
+function EpisodioModal({ record, onClose, onSaved }) {
+  const VUOTO = { titolo:"", descrizione:"", ospiti:"", durata:"", data_pub:"", url_audio:"", url_video:"", pubblicato:false };
+  const [form, setForm] = useState(record ? { titolo:record.titolo||"", descrizione:record.descrizione||"", ospiti:record.ospiti||"", durata:record.durata||"", data_pub:record.data_pub||"", url_audio:record.url_audio||"", url_video:record.url_video||"", pubblicato:record.pubblicato??false } : { ...VUOTO });
+  const [saving, setSaving] = useState(false);
+  const [errore, setErrore] = useState("");
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
+  const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
+  const submit = async () => {
+    if (!form.titolo.trim()) { setErrore("Il titolo è obbligatorio."); return; }
+    setSaving(true); setErrore("");
+    const { error } = record
+      ? await supabase.from('episodi').update(form).eq('id', record.id)
+      : await supabase.from('episodi').insert([form]);
+    setSaving(false);
+    if (error) { setErrore(error.message); return; }
+    onSaved();
+  };
+  return (
+    <AdminModal titolo={record ? "Modifica episodio" : "Aggiungi episodio"} onClose={onClose} onSubmit={submit} saving={saving} errore={errore}>
+      <div><label style={LABEL}>Titolo</label><input style={INPUT} value={form.titolo} onChange={e => set("titolo", e.target.value)} placeholder="Titolo episodio" /></div>
+      <div><label style={LABEL}>Descrizione</label><textarea style={{ ...INPUT, minHeight:70, resize:"vertical" }} value={form.descrizione} onChange={e => set("descrizione", e.target.value)} placeholder="Descrizione…" /></div>
+      <div><label style={LABEL}>Ospiti</label><input style={INPUT} value={form.ospiti} onChange={e => set("ospiti", e.target.value)} placeholder="es. Mario Rossi, Anna Bianchi" /></div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Durata</label><input style={INPUT} value={form.durata} onChange={e => set("durata", e.target.value)} placeholder="es. 45 min" /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Data pubbl.</label><input type="date" style={INPUT} value={form.data_pub} onChange={e => set("data_pub", e.target.value)} /></div>
+      </div>
+      <div><label style={LABEL}>URL audio</label><input style={INPUT} value={form.url_audio} onChange={e => set("url_audio", e.target.value)} placeholder="https://…" /></div>
+      <div><label style={LABEL}>URL video</label><input style={INPUT} value={form.url_video} onChange={e => set("url_video", e.target.value)} placeholder="https://…" /></div>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <input type="checkbox" id="ep-pubbl-cb" checked={form.pubblicato} onChange={e => set("pubblicato", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
+        <label htmlFor="ep-pubbl-cb" style={{ fontSize:11, color:C.muted, fontFamily:F, cursor:"pointer" }}>Pubblicato</label>
+      </div>
+    </AdminModal>
+  );
+}
+
 // ── AdminSection ───────────────────────────────────────────────────────────────
 function AdminSection({ socioProfilo }) {
   const [sottoTab, setSottoTab] = useState("soci");
@@ -1706,9 +1744,10 @@ function AdminSection({ socioProfilo }) {
     eventi:      { tabella:"eventi",      cols:[{k:"titolo",l:"Titolo"},{k:"tipo",l:"Tipo"},{k:"data",l:"Data"},{k:"iscrizioni_aperte",l:"Iscrizioni"}] },
     convenzioni: { tabella:"convenzioni", cols:[{k:"nome",l:"Azienda"},{k:"categoria",l:"Categoria"},{k:"scadenza",l:"Scadenza"},{k:"attiva",l:"Attiva"}] },
     articoli:    { tabella:"articoli",    cols:[{k:"titolo",l:"Titolo"},{k:"autore",l:"Autore"},{k:"data_pub",l:"Data"},{k:"pubblicato",l:"Pubbl."}] },
+    podcast:     { tabella:"episodi",     cols:[{k:"titolo",l:"Titolo"},{k:"ospiti",l:"Ospiti"},{k:"data_pub",l:"Data"},{k:"durata",l:"Durata"}] },
   };
 
-  const AGGIUNGI_LABEL = { soci:"+ Aggiungi socio", eventi:"+ Aggiungi evento", convenzioni:"+ Aggiungi convenzione", articoli:"+ Aggiungi articolo" };
+  const AGGIUNGI_LABEL = { soci:"+ Aggiungi socio", eventi:"+ Aggiungi evento", convenzioni:"+ Aggiungi convenzione", articoli:"+ Aggiungi articolo", podcast:"+ Aggiungi episodio" };
 
   const carica = async (tab = sottoTab) => {
     setLoading(true);
@@ -1734,6 +1773,7 @@ function AdminSection({ socioProfilo }) {
     if (sottoTab === "eventi")      return <EventoModal {...props} />;
     if (sottoTab === "convenzioni") return <ConvenzioneModal {...props} />;
     if (sottoTab === "articoli")    return <ArticoloModal {...props} />;
+    if (sottoTab === "podcast")     return <EpisodioModal {...props} />;
   };
 
   const renderCella = (r, k) => {
@@ -1745,7 +1785,7 @@ function AdminSection({ socioProfilo }) {
     return <span style={{ color:C.text }}>{v}</span>;
   };
 
-  const TABS = ["Soci", "Eventi", "Convenzioni", "Articoli"];
+  const TABS = ["Soci", "Eventi", "Convenzioni", "Articoli", "Podcast"];
 
   return (
     <div>
