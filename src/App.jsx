@@ -1485,10 +1485,75 @@ const NAV_TABS = [
   { id:"podcast",     label:"Podcast",     icon:"🎙️" },
 ];
 
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errore, setErrore] = useState("");
+
+  const login = async () => {
+    if (!email || !password) { setErrore("Inserisci email e password"); return; }
+    setLoading(true); setErrore("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setErrore("Email o password non corretti"); setLoading(false); return; }
+    onLogin();
+  };
+
+  return (
+    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#080605" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet" />
+      <div style={{ width:360, padding:"40px 32px", background:C.surface, borderRadius:20, border:`1px solid ${C.border}` }}>
+        <div style={{ textAlign:"center", marginBottom:32 }}>
+          <div style={{ width:56, height:56, background:C.red, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, margin:"0 auto 16px" }}>🐉</div>
+          <h1 style={{ fontFamily:S, fontSize:28, color:C.text, margin:"0 0 6px" }}>UNIIC</h1>
+          <p style={{ fontFamily:F, fontSize:11, color:C.gold, letterSpacing:2, margin:0 }}>中意商联</p>
+        </div>
+        <div style={{ marginBottom:14 }}>
+          <div style={{ fontSize:10, color:C.faint, fontFamily:F, letterSpacing:.5, marginBottom:6 }}>EMAIL</div>
+          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="la-tua@email.it" type="email"
+            style={{ width:"100%", background:C.alt, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", color:C.text, fontSize:13, fontFamily:F, boxSizing:"border-box", outline:"none" }} />
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:10, color:C.faint, fontFamily:F, letterSpacing:.5, marginBottom:6 }}>PASSWORD</div>
+          <input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" type="password"
+            onKeyDown={e => e.key==="Enter" && login()}
+            style={{ width:"100%", background:C.alt, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", color:C.text, fontSize:13, fontFamily:F, boxSizing:"border-box", outline:"none" }} />
+        </div>
+        {errore && <div style={{ fontSize:12, color:C.red, fontFamily:F, marginBottom:14, textAlign:"center" }}>{errore}</div>}
+        <button onClick={login} disabled={loading} style={{ width:"100%", background:C.red, border:"none", borderRadius:10, padding:"13px", color:"#fff", fontSize:14, fontFamily:F, fontWeight:600, cursor:"pointer" }}>
+          {loading ? "Accesso in corso..." : "Accedi →"}
+        </button>
+        <p style={{ textAlign:"center", fontSize:11, color:C.faint, fontFamily:F, marginTop:20 }}>App riservata ai soci UNIIC</p>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState("home");
   const [role, setRole] = useState("direttivo");
+  const [session, setSession] = useState(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const isAdmin = role === "direttivo";
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setCheckingAuth(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (checkingAuth) return (
+    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#080605" }}>
+      <div style={{ fontFamily:S, fontSize:20, color:C.gold }}>UNIIC</div>
+    </div>
+  );
+
+  if (!session) return <LoginScreen onLogin={() => {}} />;
 
   const renderSection = () => {
     switch(tab) {
@@ -1502,12 +1567,12 @@ export default function App() {
     }
   };
 
+  const logout = async () => { await supabase.auth.signOut(); };
+
   return (
     <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#080605" }}>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet" />
       <div style={{ width:390, minHeight:"100vh", maxHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", boxShadow:"0 0 80px rgba(0,0,0,.85)", overflow:"hidden", position:"relative" }}>
-
-        {/* Top bar */}
         <div style={{ background:C.surface, padding:"10px 18px 8px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <div style={{ width:32, height:32, background:C.red, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🐉</div>
@@ -1518,18 +1583,14 @@ export default function App() {
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
             <div style={{ width:8, height:8, background:C.green, borderRadius:"50%" }} />
-            <Avatar initials="CW" size={28} color={C.red} />
+            <button onClick={logout} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"4px 10px", color:C.muted, fontFamily:F, fontSize:11, cursor:"pointer" }}>Esci</button>
           </div>
         </div>
-
-        {/* Content */}
         <div style={{ flex:1, overflowY:"auto", padding:"18px 16px 80px" }}>
           {renderSection()}
         </div>
-
-        {/* Bottom nav */}
         <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
-          {NAV_TABS.map(n => (
+          {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"}].map(n => (
             <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0" }}>
               <span style={{ fontSize:18 }}>{n.icon}</span>
               <span style={{ fontSize:9, fontFamily:F, color:tab===n.id?C.red:C.muted, fontWeight:tab===n.id?600:400 }}>{n.label}</span>
