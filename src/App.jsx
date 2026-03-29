@@ -733,7 +733,6 @@ useEffect(() => {
   return (<div>
     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16 }}>
       <SecTitle title="Eventi" sub={`${prossimi.length} prossimi · ${passati.length} passati`} />
-      {isAdmin&&<Btn onClick={() => alert("Form nuovo evento — integrato nella demo completa")} sx={{ fontSize:11,padding:"9px 14px",marginTop:4 }}>+ Nuovo</Btn>}
     </div>
     <div style={{ display:"flex",gap:6,marginBottom:18,overflowX:"auto",paddingBottom:4 }}>
       <Pill active={filtro==="tutti"} color={C.red} onClick={() => setFiltro("tutti")}>Tutti</Pill>
@@ -915,7 +914,6 @@ useEffect(() => {
   return (<div>
     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16 }}>
       <SecTitle title="Convenzioni" sub={`${attive.length} attive · ${preferiti.length} preferite`} />
-      {isAdmin&&<Btn onClick={() => alert("Pannello admin — vedi uniic_convenzioni.jsx")} sx={{ fontSize:10,padding:"8px 10px",marginTop:4 }}>⚙ Admin</Btn>}
     </div>
     {isAdmin&&inAttesaCount>0&&<div style={{ background:C.goldDim,border:`1px solid ${C.gold}44`,borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:C.gold,fontFamily:F }}>
       📨 {inAttesaCount} proposta{inAttesaCount>1?"e":""} in attesa di approvazione
@@ -998,7 +996,6 @@ function NLLettura({ art, role, salvati, onToggleSalva, onBack, isAdmin, setArti
     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
       <BackBtn onClick={onBack} label="← Newsletter" />
       <div style={{ display:"flex",gap:8 }}>
-        {isAdmin&&<button onClick={() => alert("Editor: vedi uniic_newsletter.jsx")} style={{ background:"none",border:"none",color:C.gold,fontSize:16,cursor:"pointer" }}>✏️</button>}
         <button onClick={() => onToggleSalva(art.id)} style={{ background:"none",border:"none",fontSize:20,cursor:"pointer" }}>{isSalvato?"🔖":"🏷️"}</button>
       </div>
     </div>
@@ -1126,7 +1123,6 @@ function NewsletterSection({ role, isAdmin, socioProfilo }) {
       </div>
       <div style={{ display:"flex",gap:6 }}>
         <button onClick={() => setShowNotif(true)} style={{ background:notifiche.filter(n=>n.attiva).length>0?C.goldDim:C.alt,border:`1px solid ${notifiche.filter(n=>n.attiva).length>0?C.gold:C.border}`,borderRadius:8,padding:"7px 10px",color:C.gold,cursor:"pointer",fontSize:16 }}>🔔</button>
-        {isAdmin&&<Btn onClick={() => alert("Editor articoli — vedi uniic_newsletter.jsx")} sx={{ fontSize:11,padding:"7px 12px" }}>+ Scrivi</Btn>}
       </div>
     </div>
     <div style={{ display:"flex",gap:8,marginBottom:12 }}>
@@ -1220,7 +1216,6 @@ function PodScheda({ ep, role, salvati, onToggleSalva, playing, playingEp, onPla
     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
       <BackBtn onClick={onBack} label="← Tutti gli episodi" />
       <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-        {isAdmin&&<button onClick={() => alert("Statistiche — vedi uniic_podcast.jsx")} style={{ background:"none",border:"none",color:C.blue,fontSize:16,cursor:"pointer" }}>📊</button>}
         <button onClick={() => onToggleSalva(ep.id)} style={{ background:"none",border:"none",fontSize:20,cursor:"pointer" }}>{isSalvato?"🔖":"🏷️"}</button>
       </div>
     </div>
@@ -1420,7 +1415,6 @@ function PodcastSection({ role, isAdmin, socioProfilo }) {useEffect(() => {
         <h2 style={{ fontFamily:S,fontSize:26,fontWeight:700,color:C.text,margin:0 }}>Podcast UNIIC</h2>
         <p style={{ color:C.muted,fontSize:12,margin:"4px 0 0",fontFamily:F }}>{pubbl.length} episodi pubblicati</p>
       </div>
-      {isAdmin&&<Btn onClick={() => alert("Carica nuovo episodio — vedi uniic_podcast.jsx")} sx={{ fontSize:11,padding:"8px 12px" }}>+ Nuovo</Btn>}
     </div>
     <div style={{ display:"flex",gap:8,marginBottom:12 }}>
       <button onClick={() => setShowSalvati(s=>!s)} style={{ display:"flex",alignItems:"center",gap:6,background:showSalvati?C.redDim:C.alt,border:`1px solid ${showSalvati?C.red:C.border}`,borderRadius:20,padding:"7px 12px",color:showSalvati?C.red:C.muted,fontFamily:F,fontSize:11,cursor:"pointer" }}>🔖 Salvati{salvati.length>0?` (${salvati.length})`:""}
