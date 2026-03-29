@@ -609,7 +609,7 @@ function EvSurvey({ evento, onBack }) {
 }
 function EvScheda({ evento, onBack, isAdmin }) {
   const [sub,setSub]=useState("main"); const [showPag,setShowPag]=useState(false);
-  const [iscritto,setIscritto]=useState(evento.iscrizioni.some(i=>i.nome==="Chen Wei"));
+  const [iscritto,setIscritto]=useState(evento.iscrizioni.some(i=>i.nome===(socioProfilo?.nome || "Chen Wei")));
   const [calAdded,setCalAdded]=useState(false);
   const t=EV_TIPI[evento.tipo]; const sold=evento.iscritti>=evento.posti; const pct=Math.round(evento.iscritti/evento.posti*100);
   if(sub==="iscritti") return <EvIscritti evento={evento} onBack={() => setSub("main")} isAdmin={isAdmin} />;
@@ -686,7 +686,7 @@ function EvScheda({ evento, onBack, isAdmin }) {
     </Box>}
   </div>);
 }
-function EventiSection({ isAdmin }) {
+function EventiSection({ isAdmin, socioProfilo }) {
   const [eventiDB, setEventiDB] = useState([]);
 const [loadingEv, setLoadingEv] = useState(true);
 
@@ -713,7 +713,7 @@ useEffect(() => {
   if(selected) return <EvScheda evento={selected} onBack={() => setSelected(null)} isAdmin={isAdmin} />;
   const ECard=({ev}) => {
     const tp=EV_TIPI[ev.tipo]; const sold=ev.iscritti>=ev.posti; const pct=ev.iscritti/ev.posti;
-    const isc=ev.iscrizioni.some(i=>i.nome==="Chen Wei");
+    const isc=ev.iscrizioni.some(i=>i.nome===(socioProfilo?.nome || "Chen Wei"));
     return (<Box onClick={() => setSelected(ev)} sx={{ marginBottom:12,borderLeft:`3px solid ${tp.color}` }}>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,flexWrap:"wrap",gap:6 }}>
         <div style={{ display:"flex",gap:6 }}><Tag label={`${tp.icon} ${tp.label}`} color={tp.color} sm /><AccessoBadge accesso={ev.accesso} /></div>
@@ -993,7 +993,7 @@ function NLLettura({ art, role, salvati, onToggleSalva, onBack, isAdmin, setArti
     if(myR===tipo){setMyR(null);setReazioni(r=>({...r,[tipo]:r[tipo]-1}));}
     else{if(myR)setReazioni(r=>({...r,[myR]:r[myR]-1}));setMyR(tipo);setReazioni(r=>({...r,[tipo]:r[tipo]+1}));}
   };
-  const inviaComm=()=>{if(!draft.trim())return;setCommenti(cs=>[...cs,{autore:"Chen Wei",avatar:"CW",colore:C.red,testo:draft.trim(),data:"adesso"}]);setDraft("");};
+  const inviaComm=()=>{if(!draft.trim())return;setCommenti(cs=>[...cs,{autore:(socioProfilo?.nome || "Chen Wei"),avatar:"CW",colore:C.red,testo:draft.trim(),data:"adesso"}]);setDraft("");};
   return (<div>
     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
       <BackBtn onClick={onBack} label="← Newsletter" />
@@ -1067,7 +1067,7 @@ function NLLettura({ art, role, salvati, onToggleSalva, onBack, isAdmin, setArti
     </Box>}
   </div>);
 }
-function NewsletterSection({ role, isAdmin }) {
+function NewsletterSection({ role, isAdmin, socioProfilo }) {
 
   const [articoli,setArticoli]=useState([]); const [notifiche,setNotifiche]=useState([]);
   const [selected,setSelected]=useState(null); const [filterCat,setFilterCat]=useState("tutti");
@@ -1213,7 +1213,7 @@ function PodScheda({ ep, role, salvati, onToggleSalva, playing, playingEp, onPla
   const isPlaying=playing&&playingEp?.id===ep.id; const acc=podCanListen(ep,role);
   const inviaComm=()=>{
     if(!draft.trim()||draftStelle===0) return;
-    setCommenti(cs=>[...cs,{autore:"Chen Wei",avatar:"CW",colore:C.red,stelle:draftStelle,testo:draft.trim(),data:"adesso"}]);
+    setCommenti(cs=>[...cs,{autore:(socioProfilo?.nome || "Chen Wei"),avatar:"CW",colore:C.red,stelle:draftStelle,testo:draft.trim(),data:"adesso"}]);
     setDraft("");setDraftStelle(0);
   };
   return (<div>
@@ -1340,7 +1340,7 @@ function PodScheda({ ep, role, salvati, onToggleSalva, playing, playingEp, onPla
     </div>}
   </div>);
 }
-function PodcastSection({ role, isAdmin }) {useEffect(() => {
+function PodcastSection({ role, isAdmin, socioProfilo }) {useEffect(() => {
   async function carica() {
     const { data, error } = await supabase.from('episodi').select('*');
     if (error) { console.log('Errore:', error); return; }
@@ -1577,9 +1577,9 @@ useEffect(() => {
       case "home":        return <HomeSection onNav={setTab} role={role} setRole={setRole} socioProfilo={socioProfilo} />;
       case "soci":        return <SociSection role={role} />;
       case "convenzioni": return <ConvenzioniSection role={role} isAdmin={isAdmin} />;
-      case "eventi":      return <EventiSection isAdmin={isAdmin} />;
-      case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} />;
-      case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} />;
+      case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} />;
+      case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
+      case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       default:            return null;
     }
   };
