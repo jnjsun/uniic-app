@@ -1697,7 +1697,8 @@ function ArticoloModal({ record, onClose, onSaved }) {
 // ── Episodi modal ──────────────────────────────────────────────────────────────
 function EpisodioModal({ record, onClose, onSaved }) {
   const VUOTO = { titolo:"", descrizione:"", ospiti:"", durata:"", data_pub:"", url_audio:"", url_video:"", pubblicato:false };
-  const [form, setForm] = useState(record ? { titolo:record.titolo||"", descrizione:record.descrizione||"", ospiti:record.ospiti||"", durata:record.durata||"", data_pub:record.data_pub||"", url_audio:record.url_audio||"", url_video:record.url_video||"", pubblicato:record.pubblicato??false } : { ...VUOTO });
+  const ospiti_str = record ? (Array.isArray(record.ospiti) ? record.ospiti.map(o => o?.nome || o).join(", ") : typeof record.ospiti === "object" && record.ospiti !== null ? record.ospiti.nome || JSON.stringify(record.ospiti) : record.ospiti || "") : "";
+  const [form, setForm] = useState(record ? { titolo:record.titolo||"", descrizione:record.descrizione||"", ospiti:ospiti_str, durata:record.durata||"", data_pub:record.data_pub||"", url_audio:record.url_audio||"", url_video:record.url_video||"", pubblicato:record.pubblicato??false } : { ...VUOTO });
   const [saving, setSaving] = useState(false);
   const [errore, setErrore] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -1782,6 +1783,10 @@ function AdminSection({ socioProfilo }) {
       return <span style={{ color:v?C.green:C.red, fontSize:13 }}>{v?"✓":"✗"}</span>;
     if (k === "tipo" || k === "categoria")
       return <span style={{ background:`${C.gold}22`, color:C.gold, borderRadius:6, padding:"2px 7px", fontSize:10, fontWeight:600 }}>{v}</span>;
+    if (Array.isArray(v))
+      return <span style={{ color:C.text }}>{v.map(o => o?.nome || o).join(", ")}</span>;
+    if (typeof v === "object" && v !== null)
+      return <span style={{ color:C.text }}>{v?.nome || JSON.stringify(v)}</span>;
     return <span style={{ color:C.text }}>{v}</span>;
   };
 
