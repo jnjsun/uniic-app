@@ -1627,15 +1627,15 @@ function EventoModal({ record, onClose, onSaved }) {
 
 // ── Convenzioni modal ──────────────────────────────────────────────────────────
 function ConvenzioneModal({ record, onClose, onSaved }) {
-  const VUOTO = { nome_azienda:"", categoria:"", descrizione:"", scadenza:"", attiva:true };
-  const [form, setForm] = useState(record ? { nome_azienda:record.nome_azienda||"", categoria:record.categoria||"", descrizione:record.descrizione||"", scadenza:record.scadenza||"", attiva:record.attiva??true } : { ...VUOTO });
+  const VUOTO = { nome:"", categoria:"", descrizione:"", scadenza:"", attiva:true };
+  const [form, setForm] = useState(record ? { nome:record.nome||"", categoria:record.categoria||"", descrizione:record.descrizione||"", scadenza:record.scadenza||"", attiva:record.attiva??true } : { ...VUOTO });
   const [saving, setSaving] = useState(false);
   const [errore, setErrore] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
   const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
   const submit = async () => {
-    if (!form.nome_azienda.trim()) { setErrore("Il nome azienda è obbligatorio."); return; }
+    if (!form.nome.trim()) { setErrore("Il nome azienda è obbligatorio."); return; }
     setSaving(true); setErrore("");
     const { error } = record
       ? await supabase.from('convenzioni').update(form).eq('id', record.id)
@@ -1646,7 +1646,7 @@ function ConvenzioneModal({ record, onClose, onSaved }) {
   };
   return (
     <AdminModal titolo={record ? "Modifica convenzione" : "Aggiungi convenzione"} onClose={onClose} onSubmit={submit} saving={saving} errore={errore}>
-      <div><label style={LABEL}>Nome azienda</label><input style={INPUT} value={form.nome_azienda} onChange={e => set("nome_azienda", e.target.value)} placeholder="Nome azienda" /></div>
+      <div><label style={LABEL}>Nome azienda</label><input style={INPUT} value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Nome azienda" /></div>
       <div><label style={LABEL}>Categoria</label><input style={INPUT} value={form.categoria} onChange={e => set("categoria", e.target.value)} placeholder="es. Ristorazione, Viaggi…" /></div>
       <div><label style={LABEL}>Descrizione</label><textarea style={{ ...INPUT, minHeight:70, resize:"vertical" }} value={form.descrizione} onChange={e => set("descrizione", e.target.value)} placeholder="Descrizione convenzione…" /></div>
       <div><label style={LABEL}>Scadenza</label><input type="date" style={INPUT} value={form.scadenza} onChange={e => set("scadenza", e.target.value)} /></div>
@@ -1704,7 +1704,7 @@ function AdminSection({ socioProfilo }) {
   const CONF = {
     soci:        { tabella:"soci",        cols:[{k:"nome",l:"Nome"},{k:"email",l:"Email"},{k:"tipo",l:"Tipo"},{k:"attivo",l:"Attivo"}] },
     eventi:      { tabella:"eventi",      cols:[{k:"titolo",l:"Titolo"},{k:"tipo",l:"Tipo"},{k:"data",l:"Data"},{k:"iscrizioni_aperte",l:"Iscrizioni"}] },
-    convenzioni: { tabella:"convenzioni", cols:[{k:"nome_azienda",l:"Azienda"},{k:"categoria",l:"Categoria"},{k:"scadenza",l:"Scadenza"},{k:"attiva",l:"Attiva"}] },
+    convenzioni: { tabella:"convenzioni", cols:[{k:"nome",l:"Azienda"},{k:"categoria",l:"Categoria"},{k:"scadenza",l:"Scadenza"},{k:"attiva",l:"Attiva"}] },
     articoli:    { tabella:"articoli",    cols:[{k:"titolo",l:"Titolo"},{k:"autore",l:"Autore"},{k:"data_pub",l:"Data"},{k:"pubblicato",l:"Pubbl."}] },
   };
 
@@ -1720,7 +1720,7 @@ function AdminSection({ socioProfilo }) {
   useEffect(() => { carica(sottoTab); }, [sottoTab]);
 
   const elimina = async (r) => {
-    const label = r.nome || r.titolo || r.nome_azienda || r.id;
+    const label = r.nome || r.titolo || r.id;
     if (!window.confirm(`Sei sicuro di voler eliminare "${label}"?`)) return;
     await supabase.from(CONF[sottoTab].tabella).delete().eq('id', r.id);
     carica();
