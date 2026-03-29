@@ -1529,65 +1529,20 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-const FORM_VUOTO = { nome:"", email:"", tipo:"ordinario", attivo:true, avatar_iniziali:"", avatar_colore:"#C8A96E" };
-
-function SocioModal({ socio, onClose, onSaved }) {
-  const [form, setForm] = useState(socio ? { nome:socio.nome||"", email:socio.email||"", tipo:socio.tipo||"ordinario", attivo:socio.attivo??true, avatar_iniziali:socio.avatar_iniziali||"", avatar_colore:socio.avatar_colore||"#C8A96E" } : { ...FORM_VUOTO });
-  const [saving, setSaving] = useState(false);
-  const [errore, setErrore] = useState("");
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const submit = async () => {
-    if (!form.nome.trim() || !form.email.trim()) { setErrore("Nome e email sono obbligatori."); return; }
-    setSaving(true); setErrore("");
-    let error;
-    if (socio) {
-      ({ error } = await supabase.from('soci').update(form).eq('id', socio.id));
-    } else {
-      ({ error } = await supabase.from('soci').insert([form]));
-    }
-    setSaving(false);
-    if (error) { setErrore(error.message); return; }
-    onSaved();
-  };
-
-  const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
-  const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
-
+// ── Shared modal shell ────────────────────────────────────────────────────────
+function AdminModal({ titolo, onClose, onSubmit, saving, errore, children }) {
+  const BTN_ROW = { display:"flex", gap:8, marginTop:20 };
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:16, padding:24, width:340, maxWidth:"92vw", position:"relative" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:16, padding:24, width:340, maxWidth:"92vw", maxHeight:"88vh", overflowY:"auto", position:"relative" }}>
         <button onClick={onClose} style={{ position:"absolute", top:14, right:16, background:"none", border:"none", color:C.muted, fontSize:20, cursor:"pointer", lineHeight:1 }}>×</button>
-        <h3 style={{ fontFamily:S, fontSize:18, color:C.text, margin:"0 0 18px" }}>{socio ? "Modifica socio" : "Aggiungi socio"}</h3>
-
-        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          <div><label style={LABEL}>Nome</label><input style={INPUT} value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Nome Cognome" /></div>
-          <div><label style={LABEL}>Email</label><input style={INPUT} value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@esempio.it" /></div>
-          <div>
-            <label style={LABEL}>Tipo</label>
-            <select style={INPUT} value={form.tipo} onChange={e => set("tipo", e.target.value)}>
-              <option value="ordinario">Ordinario</option>
-              <option value="direttivo">Direttivo</option>
-              <option value="onorario">Onorario</option>
-            </select>
-          </div>
-          <div style={{ display:"flex", gap:12 }}>
-            <div style={{ flex:1 }}><label style={LABEL}>Iniziali avatar</label><input style={INPUT} value={form.avatar_iniziali} onChange={e => set("avatar_iniziali", e.target.value)} placeholder="es. CW" maxLength={3} /></div>
-            <div style={{ flex:1 }}><label style={LABEL}>Colore avatar</label><input type="color" style={{ ...INPUT, padding:4, height:38, cursor:"pointer" }} value={form.avatar_colore} onChange={e => set("avatar_colore", e.target.value)} /></div>
-          </div>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <input type="checkbox" id="attivo-cb" checked={form.attivo} onChange={e => set("attivo", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
-            <label htmlFor="attivo-cb" style={{ ...LABEL, margin:0, cursor:"pointer" }}>Socio attivo</label>
-          </div>
-        </div>
-
+        <h3 style={{ fontFamily:S, fontSize:18, color:C.text, margin:"0 0 18px" }}>{titolo}</h3>
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>{children}</div>
         {errore && <div style={{ color:C.red, fontFamily:F, fontSize:12, marginTop:10 }}>{errore}</div>}
-
-        <div style={{ display:"flex", gap:8, marginTop:20 }}>
+        <div style={BTN_ROW}>
           <button onClick={onClose} style={{ flex:1, padding:"10px 0", borderRadius:8, border:`1px solid ${C.border}`, background:"none", color:C.muted, fontFamily:F, fontSize:13, cursor:"pointer" }}>Annulla</button>
-          <button onClick={submit} disabled={saving} style={{ flex:2, padding:"10px 0", borderRadius:8, border:"none", background:C.gold, color:C.bg, fontFamily:F, fontSize:13, fontWeight:600, cursor:saving?"wait":"pointer", opacity:saving?0.7:1 }}>
-            {saving ? "Salvataggio…" : (socio ? "Salva modifiche" : "Aggiungi")}
+          <button onClick={onSubmit} disabled={saving} style={{ flex:2, padding:"10px 0", borderRadius:8, border:"none", background:C.gold, color:C.bg, fontFamily:F, fontSize:13, fontWeight:600, cursor:saving?"wait":"pointer", opacity:saving?0.7:1 }}>
+            {saving ? "Salvataggio…" : "Salva"}
           </button>
         </div>
       </div>
@@ -1595,46 +1550,218 @@ function SocioModal({ socio, onClose, onSaved }) {
   );
 }
 
+// ── Soci modal ─────────────────────────────────────────────────────────────────
+function SocioModal({ record, onClose, onSaved }) {
+  const VUOTO = { nome:"", email:"", tipo:"ordinario", attivo:true, avatar_iniziali:"", avatar_colore:"#C8A96E" };
+  const [form, setForm] = useState(record ? { nome:record.nome||"", email:record.email||"", tipo:record.tipo||"ordinario", attivo:record.attivo??true, avatar_iniziali:record.avatar_iniziali||"", avatar_colore:record.avatar_colore||"#C8A96E" } : { ...VUOTO });
+  const [saving, setSaving] = useState(false);
+  const [errore, setErrore] = useState("");
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
+  const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
+  const submit = async () => {
+    if (!form.nome.trim() || !form.email.trim()) { setErrore("Nome e email sono obbligatori."); return; }
+    setSaving(true); setErrore("");
+    const { error } = record
+      ? await supabase.from('soci').update(form).eq('id', record.id)
+      : await supabase.from('soci').insert([form]);
+    setSaving(false);
+    if (error) { setErrore(error.message); return; }
+    onSaved();
+  };
+  return (
+    <AdminModal titolo={record ? "Modifica socio" : "Aggiungi socio"} onClose={onClose} onSubmit={submit} saving={saving} errore={errore}>
+      <div><label style={LABEL}>Nome</label><input style={INPUT} value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Nome Cognome" /></div>
+      <div><label style={LABEL}>Email</label><input style={INPUT} value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@esempio.it" /></div>
+      <div><label style={LABEL}>Tipo</label>
+        <select style={INPUT} value={form.tipo} onChange={e => set("tipo", e.target.value)}>
+          <option value="ordinario">Ordinario</option><option value="direttivo">Direttivo</option><option value="onorario">Onorario</option>
+        </select>
+      </div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Iniziali avatar</label><input style={INPUT} value={form.avatar_iniziali} onChange={e => set("avatar_iniziali", e.target.value)} placeholder="es. CW" maxLength={3} /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Colore avatar</label><input type="color" style={{ ...INPUT, padding:4, height:38, cursor:"pointer" }} value={form.avatar_colore} onChange={e => set("avatar_colore", e.target.value)} /></div>
+      </div>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <input type="checkbox" id="attivo-cb" checked={form.attivo} onChange={e => set("attivo", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
+        <label htmlFor="attivo-cb" style={{ fontSize:11, color:C.muted, fontFamily:F, cursor:"pointer" }}>Socio attivo</label>
+      </div>
+    </AdminModal>
+  );
+}
+
+// ── Eventi modal ───────────────────────────────────────────────────────────────
+function EventoModal({ record, onClose, onSaved }) {
+  const VUOTO = { titolo:"", desc_evento:"", tipo:"networking", data:"", luogo:"", posti:50, iscrizioni_aperte:true };
+  const [form, setForm] = useState(record ? { titolo:record.titolo||"", desc_evento:record.desc_evento||"", tipo:record.tipo||"networking", data:record.data||"", luogo:record.luogo||"", posti:record.posti||50, iscrizioni_aperte:record.iscrizioni_aperte??true } : { ...VUOTO });
+  const [saving, setSaving] = useState(false);
+  const [errore, setErrore] = useState("");
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
+  const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
+  const submit = async () => {
+    if (!form.titolo.trim()) { setErrore("Il titolo è obbligatorio."); return; }
+    setSaving(true); setErrore("");
+    const { error } = record
+      ? await supabase.from('eventi').update(form).eq('id', record.id)
+      : await supabase.from('eventi').insert([form]);
+    setSaving(false);
+    if (error) { setErrore(error.message); return; }
+    onSaved();
+  };
+  return (
+    <AdminModal titolo={record ? "Modifica evento" : "Aggiungi evento"} onClose={onClose} onSubmit={submit} saving={saving} errore={errore}>
+      <div><label style={LABEL}>Titolo</label><input style={INPUT} value={form.titolo} onChange={e => set("titolo", e.target.value)} placeholder="Titolo evento" /></div>
+      <div><label style={LABEL}>Descrizione</label><textarea style={{ ...INPUT, minHeight:80, resize:"vertical" }} value={form.desc_evento} onChange={e => set("desc_evento", e.target.value)} placeholder="Descrizione…" /></div>
+      <div><label style={LABEL}>Tipo</label>
+        <select style={INPUT} value={form.tipo} onChange={e => set("tipo", e.target.value)}>
+          <option value="networking">Networking</option><option value="formazione">Formazione</option><option value="culturale">Culturale</option><option value="business">Business</option>
+        </select>
+      </div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Data</label><input type="date" style={INPUT} value={form.data} onChange={e => set("data", e.target.value)} /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Posti</label><input type="number" style={INPUT} value={form.posti} onChange={e => set("posti", Number(e.target.value))} min={1} /></div>
+      </div>
+      <div><label style={LABEL}>Luogo</label><input style={INPUT} value={form.luogo} onChange={e => set("luogo", e.target.value)} placeholder="Via, Città" /></div>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <input type="checkbox" id="isc-cb" checked={form.iscrizioni_aperte} onChange={e => set("iscrizioni_aperte", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
+        <label htmlFor="isc-cb" style={{ fontSize:11, color:C.muted, fontFamily:F, cursor:"pointer" }}>Iscrizioni aperte</label>
+      </div>
+    </AdminModal>
+  );
+}
+
+// ── Convenzioni modal ──────────────────────────────────────────────────────────
+function ConvenzioneModal({ record, onClose, onSaved }) {
+  const VUOTO = { nome_azienda:"", categoria:"", descrizione:"", scadenza:"", attiva:true };
+  const [form, setForm] = useState(record ? { nome_azienda:record.nome_azienda||"", categoria:record.categoria||"", descrizione:record.descrizione||"", scadenza:record.scadenza||"", attiva:record.attiva??true } : { ...VUOTO });
+  const [saving, setSaving] = useState(false);
+  const [errore, setErrore] = useState("");
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
+  const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
+  const submit = async () => {
+    if (!form.nome_azienda.trim()) { setErrore("Il nome azienda è obbligatorio."); return; }
+    setSaving(true); setErrore("");
+    const { error } = record
+      ? await supabase.from('convenzioni').update(form).eq('id', record.id)
+      : await supabase.from('convenzioni').insert([form]);
+    setSaving(false);
+    if (error) { setErrore(error.message); return; }
+    onSaved();
+  };
+  return (
+    <AdminModal titolo={record ? "Modifica convenzione" : "Aggiungi convenzione"} onClose={onClose} onSubmit={submit} saving={saving} errore={errore}>
+      <div><label style={LABEL}>Nome azienda</label><input style={INPUT} value={form.nome_azienda} onChange={e => set("nome_azienda", e.target.value)} placeholder="Nome azienda" /></div>
+      <div><label style={LABEL}>Categoria</label><input style={INPUT} value={form.categoria} onChange={e => set("categoria", e.target.value)} placeholder="es. Ristorazione, Viaggi…" /></div>
+      <div><label style={LABEL}>Descrizione</label><textarea style={{ ...INPUT, minHeight:70, resize:"vertical" }} value={form.descrizione} onChange={e => set("descrizione", e.target.value)} placeholder="Descrizione convenzione…" /></div>
+      <div><label style={LABEL}>Scadenza</label><input type="date" style={INPUT} value={form.scadenza} onChange={e => set("scadenza", e.target.value)} /></div>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <input type="checkbox" id="conv-attiva-cb" checked={form.attiva} onChange={e => set("attiva", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
+        <label htmlFor="conv-attiva-cb" style={{ fontSize:11, color:C.muted, fontFamily:F, cursor:"pointer" }}>Convenzione attiva</label>
+      </div>
+    </AdminModal>
+  );
+}
+
+// ── Articoli modal ─────────────────────────────────────────────────────────────
+function ArticoloModal({ record, onClose, onSaved }) {
+  const VUOTO = { titolo:"", testo:"", autore:"", data_pub:"", categoria:"", pubblicato:false };
+  const [form, setForm] = useState(record ? { titolo:record.titolo||"", testo:record.testo||"", autore:record.autore||"", data_pub:record.data_pub||"", categoria:record.categoria||"", pubblicato:record.pubblicato??false } : { ...VUOTO });
+  const [saving, setSaving] = useState(false);
+  const [errore, setErrore] = useState("");
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
+  const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
+  const submit = async () => {
+    if (!form.titolo.trim()) { setErrore("Il titolo è obbligatorio."); return; }
+    setSaving(true); setErrore("");
+    const { error } = record
+      ? await supabase.from('articoli').update(form).eq('id', record.id)
+      : await supabase.from('articoli').insert([form]);
+    setSaving(false);
+    if (error) { setErrore(error.message); return; }
+    onSaved();
+  };
+  return (
+    <AdminModal titolo={record ? "Modifica articolo" : "Aggiungi articolo"} onClose={onClose} onSubmit={submit} saving={saving} errore={errore}>
+      <div><label style={LABEL}>Titolo</label><input style={INPUT} value={form.titolo} onChange={e => set("titolo", e.target.value)} placeholder="Titolo articolo" /></div>
+      <div><label style={LABEL}>Testo</label><textarea style={{ ...INPUT, minHeight:100, resize:"vertical" }} value={form.testo} onChange={e => set("testo", e.target.value)} placeholder="Testo dell'articolo…" /></div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Autore</label><input style={INPUT} value={form.autore} onChange={e => set("autore", e.target.value)} placeholder="Nome autore" /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Data pubbl.</label><input type="date" style={INPUT} value={form.data_pub} onChange={e => set("data_pub", e.target.value)} /></div>
+      </div>
+      <div><label style={LABEL}>Categoria</label><input style={INPUT} value={form.categoria} onChange={e => set("categoria", e.target.value)} placeholder="es. Cultura, Business…" /></div>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <input type="checkbox" id="pubbl-cb" checked={form.pubblicato} onChange={e => set("pubblicato", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
+        <label htmlFor="pubbl-cb" style={{ fontSize:11, color:C.muted, fontFamily:F, cursor:"pointer" }}>Pubblicato</label>
+      </div>
+    </AdminModal>
+  );
+}
+
+// ── AdminSection ───────────────────────────────────────────────────────────────
 function AdminSection({ socioProfilo }) {
   const [sottoTab, setSottoTab] = useState("soci");
-  const [soci, setSoci] = useState([]);
+  const [righe, setRighe] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [modal, setModal] = useState(null); // null | "nuovo" | { ...socio }
+  const [modal, setModal] = useState(null); // null | "nuovo" | { ...record }
 
-  const caricaSoci = async () => {
+  const CONF = {
+    soci:        { tabella:"soci",        cols:[{k:"nome",l:"Nome"},{k:"email",l:"Email"},{k:"tipo",l:"Tipo"},{k:"attivo",l:"Attivo"}] },
+    eventi:      { tabella:"eventi",      cols:[{k:"titolo",l:"Titolo"},{k:"tipo",l:"Tipo"},{k:"data",l:"Data"},{k:"iscrizioni_aperte",l:"Iscrizioni"}] },
+    convenzioni: { tabella:"convenzioni", cols:[{k:"nome_azienda",l:"Azienda"},{k:"categoria",l:"Categoria"},{k:"scadenza",l:"Scadenza"},{k:"attiva",l:"Attiva"}] },
+    articoli:    { tabella:"articoli",    cols:[{k:"titolo",l:"Titolo"},{k:"autore",l:"Autore"},{k:"data_pub",l:"Data"},{k:"pubblicato",l:"Pubbl."}] },
+  };
+
+  const AGGIUNGI_LABEL = { soci:"+ Aggiungi socio", eventi:"+ Aggiungi evento", convenzioni:"+ Aggiungi convenzione", articoli:"+ Aggiungi articolo" };
+
+  const carica = async (tab = sottoTab) => {
     setLoading(true);
-    const { data, error } = await supabase.from('soci').select('id, nome, email, tipo, attivo, avatar_iniziali, avatar_colore');
-    if (!error && data) setSoci(data);
+    const { data, error } = await supabase.from(CONF[tab].tabella).select('*');
+    if (!error && data) setRighe(data);
     setLoading(false);
   };
 
-  useEffect(() => { if (sottoTab === "soci") caricaSoci(); }, [sottoTab]);
+  useEffect(() => { carica(sottoTab); }, [sottoTab]);
 
-  const elimina = async (socio) => {
-    if (!window.confirm(`Sei sicuro di voler eliminare ${socio.nome}?`)) return;
-    await supabase.from('soci').delete().eq('id', socio.id);
-    caricaSoci();
+  const elimina = async (r) => {
+    const label = r.nome || r.titolo || r.nome_azienda || r.id;
+    if (!window.confirm(`Sei sicuro di voler eliminare "${label}"?`)) return;
+    await supabase.from(CONF[sottoTab].tabella).delete().eq('id', r.id);
+    carica();
+  };
+
+  const renderModal = () => {
+    if (!modal) return null;
+    const rec = modal === "nuovo" ? null : modal;
+    const props = { record: rec, onClose: () => setModal(null), onSaved: () => { setModal(null); carica(); } };
+    if (sottoTab === "soci")        return <SocioModal {...props} />;
+    if (sottoTab === "eventi")      return <EventoModal {...props} />;
+    if (sottoTab === "convenzioni") return <ConvenzioneModal {...props} />;
+    if (sottoTab === "articoli")    return <ArticoloModal {...props} />;
+  };
+
+  const renderCella = (r, k) => {
+    const v = r[k];
+    if (typeof v === "boolean" || v === true || v === false)
+      return <span style={{ color:v?C.green:C.red, fontSize:13 }}>{v?"✓":"✗"}</span>;
+    if (k === "tipo" || k === "categoria")
+      return <span style={{ background:`${C.gold}22`, color:C.gold, borderRadius:6, padding:"2px 7px", fontSize:10, fontWeight:600 }}>{v}</span>;
+    return <span style={{ color:C.text }}>{v}</span>;
   };
 
   const TABS = ["Soci", "Eventi", "Convenzioni", "Articoli"];
 
   return (
     <div>
-      {modal && (
-        <SocioModal
-          socio={modal === "nuovo" ? null : modal}
-          onClose={() => setModal(null)}
-          onSaved={() => { setModal(null); caricaSoci(); }}
-        />
-      )}
+      {renderModal()}
 
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
         <h2 style={{ fontFamily:S, fontSize:22, color:C.text, margin:0 }}>⚙️ Admin</h2>
-        {sottoTab === "soci" && (
-          <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
-            + Aggiungi socio
-          </button>
-        )}
+        <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+          {AGGIUNGI_LABEL[sottoTab]}
+        </button>
       </div>
 
       <div style={{ display:"flex", gap:6, marginBottom:18 }}>
@@ -1645,48 +1772,37 @@ function AdminSection({ socioProfilo }) {
         ))}
       </div>
 
-      {sottoTab === "soci" && (
-        loading
-          ? <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento…</div>
-          : <div style={{ overflowX:"auto" }}>
-              <table style={{ width:"100%", borderCollapse:"collapse", fontFamily:F, fontSize:12 }}>
-                <thead>
-                  <tr style={{ borderBottom:`1px solid ${C.border}` }}>
-                    {["Nome","Email","Tipo","Attivo",""].map(h => (
-                      <th key={h} style={{ textAlign:"left", padding:"6px 8px", color:C.muted, fontWeight:600, fontSize:11 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {soci.map((s, i) => (
-                    <tr key={i} style={{ borderBottom:`1px solid ${C.border}22` }}>
-                      <td style={{ padding:"8px 8px", color:C.text }}>{s.nome}</td>
-                      <td style={{ padding:"8px 8px", color:C.muted, fontSize:11 }}>{s.email}</td>
-                      <td style={{ padding:"8px 8px" }}>
-                        <span style={{ background:`${C.gold}22`, color:C.gold, borderRadius:6, padding:"2px 7px", fontSize:10, fontWeight:600 }}>{s.tipo}</span>
-                      </td>
-                      <td style={{ padding:"8px 8px" }}>
-                        <span style={{ color:s.attivo?C.green:C.red, fontSize:13 }}>{s.attivo?"✓":"✗"}</span>
-                      </td>
-                      <td style={{ padding:"8px 4px" }}>
-                        <div style={{ display:"flex", gap:4 }}>
-                          <button onClick={() => setModal(s)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"3px 8px", color:C.muted, fontFamily:F, fontSize:10, cursor:"pointer" }}>Modifica</button>
-                          <button onClick={() => elimina(s)} style={{ background:"none", border:`1px solid ${C.red}44`, borderRadius:6, padding:"3px 8px", color:C.red, fontFamily:F, fontSize:10, cursor:"pointer" }}>Elimina</button>
-                        </div>
-                      </td>
-                    </tr>
+      {loading
+        ? <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento…</div>
+        : <div style={{ overflowX:"auto" }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontFamily:F, fontSize:12 }}>
+              <thead>
+                <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                  {CONF[sottoTab].cols.map(c => (
+                    <th key={c.k} style={{ textAlign:"left", padding:"6px 8px", color:C.muted, fontWeight:600, fontSize:11 }}>{c.l}</th>
                   ))}
-                </tbody>
-              </table>
-              {soci.length === 0 && <div style={{ textAlign:"center", color:C.faint, fontFamily:F, fontSize:12, paddingTop:20 }}>Nessun socio trovato.</div>}
-            </div>
-      )}
-
-      {sottoTab !== "soci" && (
-        <div style={{ textAlign:"center", color:C.faint, fontFamily:F, fontSize:13, paddingTop:40 }}>
-          Sezione in sviluppo.
-        </div>
-      )}
+                  <th style={{ padding:"6px 8px" }} />
+                </tr>
+              </thead>
+              <tbody>
+                {righe.map((r, i) => (
+                  <tr key={i} style={{ borderBottom:`1px solid ${C.border}22` }}>
+                    {CONF[sottoTab].cols.map(c => (
+                      <td key={c.k} style={{ padding:"8px 8px", fontSize:12 }}>{renderCella(r, c.k)}</td>
+                    ))}
+                    <td style={{ padding:"8px 4px" }}>
+                      <div style={{ display:"flex", gap:4 }}>
+                        <button onClick={() => setModal(r)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"3px 8px", color:C.muted, fontFamily:F, fontSize:10, cursor:"pointer" }}>Modifica</button>
+                        <button onClick={() => elimina(r)} style={{ background:"none", border:`1px solid ${C.red}44`, borderRadius:6, padding:"3px 8px", color:C.red, fontFamily:F, fontSize:10, cursor:"pointer" }}>Elimina</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {righe.length === 0 && <div style={{ textAlign:"center", color:C.faint, fontFamily:F, fontSize:12, paddingTop:20 }}>Nessun record trovato.</div>}
+          </div>
+      }
     </div>
   );
 }
