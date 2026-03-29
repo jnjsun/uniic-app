@@ -189,12 +189,12 @@ const POD_TEMI = ["Import/Export","Moda","Logistica","Finanza","Geopolitica","Di
 // ═══════════════════════════════════════════════════════════════════════════════
 // SEZIONE: HOME
 // ═══════════════════════════════════════════════════════════════════════════════
-function HomeSection({ onNav, role, setRole }) {
+function HomeSection({ onNav, role, setRole, socioProfilo }) {
   return (
     <div>
       <div style={{ background:`linear-gradient(135deg,${C.red}22,transparent)`,border:`1px solid ${C.red}33`,borderRadius:16,padding:20,marginBottom:18 }}>
         <div style={{ fontSize:10,color:C.gold,fontFamily:F,fontWeight:600,letterSpacing:2,marginBottom:6 }}>BENVENUTO</div>
-        <h2 style={{ fontFamily:S,fontSize:26,color:C.text,margin:"0 0 4px",lineHeight:1.2 }}>Chen Wei</h2>
+        <h2 style={{ fontFamily:S,fontSize:26,color:C.text,margin:"0 0 4px",lineHeight:1.2 }}>{socioProfilo?.nome || "Benvenuto"}</h2>
         <p style={{ color:C.muted,fontFamily:F,fontSize:12,margin:0 }}>Socio UNIIC · Direttivo · dal 2021</p>
         <div style={{ display:"flex",gap:20,marginTop:14 }}>
           {[["156","Soci"],["5","Eventi"],["6","News"]].map(([n,l]) => (
@@ -1535,6 +1535,23 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const isAdmin = role === "direttivo";
+  const [socioProfilo, setSocioProfilo] = useState(null);
+
+useEffect(() => {
+  if (!session) return;
+  async function caricaProfilo() {
+    const { data } = await supabase
+      .from('soci')
+      .select('*')
+      .eq('email', session.user.email)
+      .single();
+    if (data) {
+      setSocioProfilo(data);
+      setRole(data.tipo || 'ordinario');
+    }
+  }
+  caricaProfilo();
+}, [session]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -1557,7 +1574,7 @@ export default function App() {
 
   const renderSection = () => {
     switch(tab) {
-      case "home":        return <HomeSection onNav={setTab} role={role} setRole={setRole} />;
+      case "home":        return <HomeSection onNav={setTab} role={role} setRole={setRole} socioProfilo={socioProfilo} />;
       case "soci":        return <SociSection role={role} />;
       case "convenzioni": return <ConvenzioniSection role={role} isAdmin={isAdmin} />;
       case "eventi":      return <EventiSection isAdmin={isAdmin} />;
