@@ -1529,30 +1529,109 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+const FORM_VUOTO = { nome:"", email:"", tipo:"ordinario", attivo:true, avatar_iniziali:"", avatar_colore:"#C8A96E" };
+
+function SocioModal({ socio, onClose, onSaved }) {
+  const [form, setForm] = useState(socio ? { nome:socio.nome||"", email:socio.email||"", tipo:socio.tipo||"ordinario", attivo:socio.attivo??true, avatar_iniziali:socio.avatar_iniziali||"", avatar_colore:socio.avatar_colore||"#C8A96E" } : { ...FORM_VUOTO });
+  const [saving, setSaving] = useState(false);
+  const [errore, setErrore] = useState("");
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const submit = async () => {
+    if (!form.nome.trim() || !form.email.trim()) { setErrore("Nome e email sono obbligatori."); return; }
+    setSaving(true); setErrore("");
+    let error;
+    if (socio) {
+      ({ error } = await supabase.from('soci').update(form).eq('id', socio.id));
+    } else {
+      ({ error } = await supabase.from('soci').insert([form]));
+    }
+    setSaving(false);
+    if (error) { setErrore(error.message); return; }
+    onSaved();
+  };
+
+  const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
+  const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
+
+  return (
+    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:16, padding:24, width:340, maxWidth:"92vw", position:"relative" }}>
+        <button onClick={onClose} style={{ position:"absolute", top:14, right:16, background:"none", border:"none", color:C.muted, fontSize:20, cursor:"pointer", lineHeight:1 }}>×</button>
+        <h3 style={{ fontFamily:S, fontSize:18, color:C.text, margin:"0 0 18px" }}>{socio ? "Modifica socio" : "Aggiungi socio"}</h3>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          <div><label style={LABEL}>Nome</label><input style={INPUT} value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Nome Cognome" /></div>
+          <div><label style={LABEL}>Email</label><input style={INPUT} value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@esempio.it" /></div>
+          <div>
+            <label style={LABEL}>Tipo</label>
+            <select style={INPUT} value={form.tipo} onChange={e => set("tipo", e.target.value)}>
+              <option value="ordinario">Ordinario</option>
+              <option value="direttivo">Direttivo</option>
+              <option value="onorario">Onorario</option>
+            </select>
+          </div>
+          <div style={{ display:"flex", gap:12 }}>
+            <div style={{ flex:1 }}><label style={LABEL}>Iniziali avatar</label><input style={INPUT} value={form.avatar_iniziali} onChange={e => set("avatar_iniziali", e.target.value)} placeholder="es. CW" maxLength={3} /></div>
+            <div style={{ flex:1 }}><label style={LABEL}>Colore avatar</label><input type="color" style={{ ...INPUT, padding:4, height:38, cursor:"pointer" }} value={form.avatar_colore} onChange={e => set("avatar_colore", e.target.value)} /></div>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <input type="checkbox" id="attivo-cb" checked={form.attivo} onChange={e => set("attivo", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
+            <label htmlFor="attivo-cb" style={{ ...LABEL, margin:0, cursor:"pointer" }}>Socio attivo</label>
+          </div>
+        </div>
+
+        {errore && <div style={{ color:C.red, fontFamily:F, fontSize:12, marginTop:10 }}>{errore}</div>}
+
+        <div style={{ display:"flex", gap:8, marginTop:20 }}>
+          <button onClick={onClose} style={{ flex:1, padding:"10px 0", borderRadius:8, border:`1px solid ${C.border}`, background:"none", color:C.muted, fontFamily:F, fontSize:13, cursor:"pointer" }}>Annulla</button>
+          <button onClick={submit} disabled={saving} style={{ flex:2, padding:"10px 0", borderRadius:8, border:"none", background:C.gold, color:C.bg, fontFamily:F, fontSize:13, fontWeight:600, cursor:saving?"wait":"pointer", opacity:saving?0.7:1 }}>
+            {saving ? "Salvataggio…" : (socio ? "Salva modifiche" : "Aggiungi")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminSection({ socioProfilo }) {
   const [sottoTab, setSottoTab] = useState("soci");
   const [soci, setSoci] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState(null); // null | "nuovo" | { ...socio }
 
-  useEffect(() => {
-    if (sottoTab !== "soci") return;
+  const caricaSoci = async () => {
     setLoading(true);
-    async function caricaSoci() {
-      const { data, error } = await supabase.from('soci').select('nome, email, tipo, attivo');
-      if (!error && data) setSoci(data);
-      setLoading(false);
-    }
+    const { data, error } = await supabase.from('soci').select('id, nome, email, tipo, attivo, avatar_iniziali, avatar_colore');
+    if (!error && data) setSoci(data);
+    setLoading(false);
+  };
+
+  useEffect(() => { if (sottoTab === "soci") caricaSoci(); }, [sottoTab]);
+
+  const elimina = async (socio) => {
+    if (!window.confirm(`Sei sicuro di voler eliminare ${socio.nome}?`)) return;
+    await supabase.from('soci').delete().eq('id', socio.id);
     caricaSoci();
-  }, [sottoTab]);
+  };
 
   const TABS = ["Soci", "Eventi", "Convenzioni", "Articoli"];
 
   return (
     <div>
+      {modal && (
+        <SocioModal
+          socio={modal === "nuovo" ? null : modal}
+          onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); caricaSoci(); }}
+        />
+      )}
+
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
         <h2 style={{ fontFamily:S, fontSize:22, color:C.text, margin:0 }}>⚙️ Admin</h2>
         {sottoTab === "soci" && (
-          <button style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+          <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
             + Aggiungi socio
           </button>
         )}
@@ -1591,8 +1670,8 @@ function AdminSection({ socioProfilo }) {
                       </td>
                       <td style={{ padding:"8px 4px" }}>
                         <div style={{ display:"flex", gap:4 }}>
-                          <button style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"3px 8px", color:C.muted, fontFamily:F, fontSize:10, cursor:"pointer" }}>Modifica</button>
-                          <button style={{ background:"none", border:`1px solid ${C.red}44`, borderRadius:6, padding:"3px 8px", color:C.red, fontFamily:F, fontSize:10, cursor:"pointer" }}>Elimina</button>
+                          <button onClick={() => setModal(s)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"3px 8px", color:C.muted, fontFamily:F, fontSize:10, cursor:"pointer" }}>Modifica</button>
+                          <button onClick={() => elimina(s)} style={{ background:"none", border:`1px solid ${C.red}44`, borderRadius:6, padding:"3px 8px", color:C.red, fontFamily:F, fontSize:10, cursor:"pointer" }}>Elimina</button>
                         </div>
                       </td>
                     </tr>
