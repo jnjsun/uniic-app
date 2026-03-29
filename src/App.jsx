@@ -1531,7 +1531,7 @@ function LoginScreen({ onLogin }) {
 
 export default function App() {
   const [tab, setTab] = useState("home");
-  const [role, setRole] = useState("direttivo");
+  const [role, setRole] = useState("ordinario");
   const [session, setSession] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const isAdmin = role === "direttivo";
