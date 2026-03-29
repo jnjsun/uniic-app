@@ -1843,6 +1843,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const isAdmin = role === "direttivo";
+  const isSuperAdmin = session?.user?.email === "jj@suncapital.it";
   const [socioProfilo, setSocioProfilo] = useState(null);
 
 useEffect(() => {
@@ -1888,7 +1889,7 @@ useEffect(() => {
       case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
-      case "admin":       return <AdminSection socioProfilo={socioProfilo} />;
+      case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} /> : null;
       default:            return null;
     }
   };
@@ -1916,7 +1917,7 @@ useEffect(() => {
           {renderSection()}
         </div>
         <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
-          {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},...(role==="direttivo"?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
+          {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},...(isSuperAdmin?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
             <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0" }}>
               <span style={{ fontSize:18 }}>{n.icon}</span>
               <span style={{ fontSize:9, fontFamily:F, color:tab===n.id?C.red:C.muted, fontWeight:tab===n.id?600:400 }}>{n.label}</span>
