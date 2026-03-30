@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, Component } from "react";
 import { supabase, subscribeToPush } from './supabase.js'
 
 // ─── TEMA ─────────────────────────────────────────────────────────────────────
@@ -1895,6 +1895,29 @@ function AdminSection({ socioProfilo, session }) {
   );
 }
 
+// ── ErrorBoundary ──────────────────────────────────────────────────────────────
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error, info) { console.error(error, info); }
+  render() {
+    if (this.state.hasError) return (
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#0F0D0D", gap:16, padding:24 }}>
+        <div style={{ fontFamily:"Cormorant Garamond, serif", fontSize:26, color:"#C9A84C", fontWeight:700 }}>UNIIC</div>
+        <div style={{ fontFamily:"Montserrat, sans-serif", fontSize:14, color:"#888", textAlign:"center", maxWidth:280, lineHeight:1.6 }}>
+          Qualcosa è andato storto.<br />Riprova o ricarica l'app.
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          style={{ marginTop:8, background:"none", border:"1px solid #C9A84C", borderRadius:8, padding:"10px 28px", color:"#C9A84C", fontFamily:"Montserrat, sans-serif", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+          Ricarica
+        </button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [tab, setTab] = useState("home");
   const [role, setRole] = useState("ordinario");
@@ -1933,8 +1956,18 @@ useEffect(() => {
   }, []);
 
   if (checkingAuth) return (
-    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#080605" }}>
-      <div style={{ fontFamily:S, fontSize:20, color:C.gold }}>UNIIC</div>
+    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#CC0000", animation:"uniicFadeIn 0.5s ease" }}>
+      <style>{`
+        @keyframes uniicFadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes uniicLoadBar { 0%,100% { width:15% } 50% { width:80% } }
+        @keyframes uniicTabFade { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+      `}</style>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:32 }}>
+        <img src="/logo-uniic.png" style={{ width:220 }} alt="UNIIC" />
+        <div style={{ width:220, height:3, background:"rgba(255,255,255,0.25)", borderRadius:2, overflow:"hidden" }}>
+          <div style={{ height:"100%", background:"#fff", borderRadius:2, animation:"uniicLoadBar 1.4s ease-in-out infinite" }} />
+        </div>
+      </div>
     </div>
   );
 
@@ -1972,8 +2005,10 @@ useEffect(() => {
             <button onClick={logout} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"4px 10px", color:C.muted, fontFamily:F, fontSize:11, cursor:"pointer" }}>Esci</button>
           </div>
         </div>
-        <div style={{ flex:1, overflowY:"auto", padding:"18px 16px 80px" }}>
-          {renderSection()}
+        <div key={tab} style={{ flex:1, overflowY:"auto", padding:"18px 16px 80px", animation:"uniicTabFade 0.2s ease" }}>
+          <ErrorBoundary>
+            {renderSection()}
+          </ErrorBoundary>
         </div>
         <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
           {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},...(isSuperAdmin?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
