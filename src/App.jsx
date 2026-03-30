@@ -1725,11 +1725,38 @@ function EpisodioModal({ record, onClose, onSaved }) {
 }
 
 // ── AdminSection ───────────────────────────────────────────────────────────────
-function AdminSection({ socioProfilo }) {
+function AdminSection({ socioProfilo, session }) {
   const [sottoTab, setSottoTab] = useState("soci");
   const [righe, setRighe] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null); // null | "nuovo" | { ...record }
+  const [pushModal, setPushModal] = useState(false);
+  const [pushTitolo, setPushTitolo] = useState("");
+  const [pushMessaggio, setPushMessaggio] = useState("");
+  const [pushLoading, setPushLoading] = useState(false);
+
+  const inviaPush = async () => {
+    setPushLoading(true);
+    try {
+      const res = await fetch('https://atltrjhnkklnkgwscsuy.supabase.co/functions/v1/send-push-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ title: pushTitolo, body: pushMessaggio }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setPushModal(false);
+      setPushTitolo("");
+      setPushMessaggio("");
+      alert('Notifiche inviate a tutti i soci!');
+    } catch (e) {
+      alert('Errore durante l\'invio: ' + e.message);
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   const CONF = {
     soci:        { tabella:"soci",        cols:[{k:"nome",l:"Nome"},{k:"email",l:"Email"},{k:"tipo",l:"Tipo"},{k:"attivo",l:"Attivo"}] },
@@ -1787,11 +1814,47 @@ function AdminSection({ socioProfilo }) {
     <div>
       {renderModal()}
 
+      {pushModal && (
+        <div style={{ position:"fixed", inset:0, background:"#000a", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.surface, borderRadius:16, padding:28, width:"90%", maxWidth:400, border:`1px solid ${C.border}` }}>
+            <h3 style={{ fontFamily:S, fontSize:18, color:C.text, margin:"0 0 18px" }}>Invia notifica</h3>
+            <div style={{ marginBottom:12 }}>
+              <label style={{ fontFamily:F, fontSize:12, color:C.muted, display:"block", marginBottom:4 }}>Titolo notifica</label>
+              <input
+                value={pushTitolo}
+                onChange={e => setPushTitolo(e.target.value)}
+                style={{ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, boxSizing:"border-box" }}
+              />
+            </div>
+            <div style={{ marginBottom:20 }}>
+              <label style={{ fontFamily:F, fontSize:12, color:C.muted, display:"block", marginBottom:4 }}>Messaggio</label>
+              <textarea
+                value={pushMessaggio}
+                onChange={e => setPushMessaggio(e.target.value)}
+                rows={3}
+                style={{ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, resize:"vertical", boxSizing:"border-box" }}
+              />
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={() => setPushModal(false)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 16px", color:C.muted, fontFamily:F, fontSize:12, cursor:"pointer" }}>Annulla</button>
+              <button onClick={inviaPush} disabled={pushLoading || !pushTitolo || !pushMessaggio} style={{ background:C.gold, border:"none", borderRadius:8, padding:"8px 16px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer", opacity: (pushLoading || !pushTitolo || !pushMessaggio) ? 0.5 : 1 }}>
+                {pushLoading ? "Invio…" : "Invia a tutti i soci"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
         <h2 style={{ fontFamily:S, fontSize:22, color:C.text, margin:0 }}>⚙️ Admin</h2>
-        <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
-          {AGGIUNGI_LABEL[sottoTab]}
-        </button>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={() => setPushModal(true)} style={{ background:"none", border:`1px solid ${C.gold}`, borderRadius:8, padding:"7px 14px", color:C.gold, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+            Invia notifica
+          </button>
+          <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+            {AGGIUNGI_LABEL[sottoTab]}
+          </button>
+        </div>
       </div>
 
       <div style={{ display:"flex", gap:6, marginBottom:18 }}>
@@ -1890,7 +1953,7 @@ useEffect(() => {
       case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
-      case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} /> : null;
+      case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} session={session} /> : null;
       default:            return null;
     }
   };
