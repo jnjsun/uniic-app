@@ -1725,7 +1725,7 @@ function EpisodioModal({ record, onClose, onSaved }) {
 }
 
 // ── AdminSection ───────────────────────────────────────────────────────────────
-function AdminSection({ socioProfilo }) {
+function AdminSection({ socioProfilo, onOpenPushModal }) {
   const [sottoTab, setSottoTab] = useState("soci");
   const [righe, setRighe] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -1787,11 +1787,16 @@ function AdminSection({ socioProfilo }) {
     <div>
       {renderModal()}
 
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, flexWrap:"wrap", gap:8 }}>
         <h2 style={{ fontFamily:S, fontSize:22, color:C.text, margin:0 }}>⚙️ Admin</h2>
-        <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
-          {AGGIUNGI_LABEL[sottoTab]}
-        </button>
+        <div style={{ display:"flex", flexDirection:"row", gap:8, flexWrap:"wrap", justifyContent:"flex-end" }}>
+          <button onClick={onOpenPushModal} style={{ background:"none", border:`1px solid ${C.gold}`, borderRadius:8, padding:"7px 14px", color:C.gold, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+            🔔 Invia notifica
+          </button>
+          <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+            {AGGIUNGI_LABEL[sottoTab]}
+          </button>
+        </div>
       </div>
 
       <div style={{ display:"flex", gap:6, marginBottom:18 }}>
@@ -1890,7 +1895,7 @@ useEffect(() => {
       case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
-      case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} /> : null;
+      case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} onOpenPushModal={() => setPushModal(true)} /> : null;
       default:            return null;
     }
   };
