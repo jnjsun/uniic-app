@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { supabase } from './supabase.js'
+import { supabase, subscribeToPush } from './supabase.js'
 
 // ─── TEMA ─────────────────────────────────────────────────────────────────────
 const C = {
@@ -1857,6 +1857,7 @@ useEffect(() => {
     if (data) {
       setSocioProfilo(data);
       setRole(data.tipo || 'ordinario');
+      subscribeToPush(session.user.id).catch(() => {});
     }
   }
   caricaProfilo();
