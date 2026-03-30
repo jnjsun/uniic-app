@@ -1,21 +1,29 @@
-self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {}
-  const title = data.title || 'UNIIC'
+self.addEventListener('push', function (event) {
+  if (!event.data) return;
+
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch (e) {
+    data = { title: 'Notifica', body: event.data.text() };
+  }
+
+  const title = data.title || 'Notifica';
   const options = {
     body: data.body || '',
-    icon: '/favicon.ico',
-  }
-  event.waitUntil(self.registration.showNotification(title, options))
-})
+    icon: data.icon || '/icon-192x192.png',
+    badge: data.badge || '/icon-192x192.png',
+    data: data.url ? { url: data.url } : {},
+  };
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close()
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url && 'focus' in client) return client.focus()
-      }
-      if (clients.openWindow) return clients.openWindow('/')
-    })
-  )
-})
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+
+  const url = event.notification.data && event.notification.data.url;
+  if (url) {
+    event.waitUntil(clients.openWindow(url));
+  }
+});
