@@ -1731,25 +1731,29 @@ function AdminSection({ socioProfilo, session }) {
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null); // null | "nuovo" | { ...record }
   const [showPushModal, setShowPushModal] = useState(false);
-  const [pushTitolo, setPushTitolo] = useState("");
-  const [pushMessaggio, setPushMessaggio] = useState("");
+  const [pushTitle, setPushTitle] = useState("");
+  const [pushBody, setPushBody] = useState("");
   const [pushLoading, setPushLoading] = useState(false);
 
   const inviaPush = async () => {
     setPushLoading(true);
     try {
-      const res = await fetch('https://atltrjhnkklnkgwscsuy.supabase.co/functions/v1/send-push-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ title: pushTitolo, body: pushMessaggio }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      const response = await fetch(
+        'https://atltrjhnkklnkgwscsuy.supabase.co/functions/v1/send-push-notification',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0bHRyamhua2tsbmtnd3Njc3V5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTI0NDksImV4cCI6MjA5MDI4ODQ0OX0.-Jpg3LXe4TOUn5AIBho8hFm5foCCNrMO7Vc4QMi5IAI',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0bHRyamhua2tsbmtnd3Njc3V5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTI0NDksImV4cCI6MjA5MDI4ODQ0OX0.-Jpg3LXe4TOUn5AIBho8hFm5foCCNrMO7Vc4QMi5IAI'
+          },
+          body: JSON.stringify({ title: pushTitle, body: pushBody })
+        }
+      );
+      if (!response.ok) throw new Error(await response.text());
       setShowPushModal(false);
-      setPushTitolo("");
-      setPushMessaggio("");
+      setPushTitle("");
+      setPushBody("");
       alert('Notifiche inviate a tutti i soci!');
     } catch (e) {
       alert("Errore durante l'invio: " + e.message);
@@ -1820,15 +1824,15 @@ function AdminSection({ socioProfilo, session }) {
             <h3 style={{ fontFamily:S, fontSize:18, color:C.text, margin:"0 0 18px" }}>Invia notifica</h3>
             <div style={{ marginBottom:12 }}>
               <label style={{ fontFamily:F, fontSize:12, color:C.muted, display:"block", marginBottom:4 }}>Titolo notifica</label>
-              <input value={pushTitolo} onChange={e => setPushTitolo(e.target.value)} style={{ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, boxSizing:"border-box" }} />
+              <input value={pushTitle} onChange={e => setPushTitle(e.target.value)} style={{ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, boxSizing:"border-box" }} />
             </div>
             <div style={{ marginBottom:20 }}>
               <label style={{ fontFamily:F, fontSize:12, color:C.muted, display:"block", marginBottom:4 }}>Messaggio</label>
-              <textarea value={pushMessaggio} onChange={e => setPushMessaggio(e.target.value)} rows={3} style={{ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, resize:"vertical", boxSizing:"border-box" }} />
+              <textarea value={pushBody} onChange={e => setPushBody(e.target.value)} rows={3} style={{ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, resize:"vertical", boxSizing:"border-box" }} />
             </div>
             <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
               <button onClick={() => setShowPushModal(false)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 16px", color:C.muted, fontFamily:F, fontSize:12, cursor:"pointer" }}>Annulla</button>
-              <button onClick={inviaPush} disabled={pushLoading || !pushTitolo || !pushMessaggio} style={{ background:C.gold, border:"none", borderRadius:8, padding:"8px 16px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer", opacity:(pushLoading || !pushTitolo || !pushMessaggio)?0.5:1 }}>
+              <button onClick={inviaPush} disabled={pushLoading || !pushTitle || !pushBody} style={{ background:C.gold, border:"none", borderRadius:8, padding:"8px 16px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer", opacity:(pushLoading || !pushTitle || !pushBody)?0.5:1 }}>
                 {pushLoading ? "Invio…" : "Invia a tutti i soci"}
               </button>
             </div>
