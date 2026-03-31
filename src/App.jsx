@@ -568,53 +568,25 @@ function EvIscritti({ evento, onBack, isAdmin }) {
     {isAdmin&&<Btn v="secondary" onClick={() => alert("Comunicazione inviata!")} sx={{ width:"100%",marginTop:14 }}>📨 Invia comunicazione</Btn>}
   </div>);
 }
-function EvSurvey({ evento, onBack }) {
-  const [inviato,setInviato]=useState(evento.survey.inviato);
-  const DOMANDE=["Organizzazione generale","Qualità contenuti","Luogo e logistica","Consiglieresti?","Qualità/Prezzo"];
-  const STATS=[{media:4.7,d:[0,1,3,12,84]},{media:4.5,d:[0,2,5,20,73]},{media:4.8,d:[0,0,2,10,88]},{media:4.6,d:[0,1,4,15,80]},{media:4.3,d:[1,3,8,25,63]}];
-  return (<div>
-    <BackBtn onClick={onBack} label="← Torna all'evento" />
-    <h3 style={{ fontFamily:S,fontSize:22,color:C.text,margin:"0 0 4px" }}>Questionario gradimento</h3>
-    <p style={{ color:C.muted,fontSize:12,fontFamily:F,margin:"0 0 18px" }}>{evento.titolo}</p>
-    {!inviato?<div>
-      <Box sx={{ marginBottom:14 }}><p style={{ color:C.muted,fontSize:13,fontFamily:F,margin:0,lineHeight:1.6 }}>Il questionario sarà inviato a tutti i <strong style={{ color:C.text }}>{evento.iscritti} partecipanti</strong>.</p></Box>
-      {DOMANDE.map((d,i) => (<Box key={i} sx={{ marginBottom:10 }}>
-        <div style={{ fontSize:12,color:C.muted,fontFamily:F,marginBottom:8 }}>{i+1}. {d}</div>
-        <div style={{ display:"flex",gap:4 }}>{[1,2,3,4,5].map(s=><span key={s} style={{ fontSize:22,color:C.border }}>★</span>)}</div>
-      </Box>))}
-      <Btn onClick={() => setInviato(true)} sx={{ width:"100%",marginTop:8 }}>📨 Invia a {evento.iscritti} partecipanti</Btn>
-    </div>:<div>
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18 }}>
-        {[[evento.survey.risposte,"Risposte",C.blue],[evento.survey.media||"—","Media",C.gold],[evento.survey.risposte>0?Math.round(evento.survey.risposte/evento.iscritti*100)+"%":"—","Tasso",C.green],["✓","Inviato",C.orange]].map(([v,l,c]) => (
-          <Box key={l} sx={{ textAlign:"center",padding:"14px 10px" }}>
-            <div style={{ fontFamily:S,fontSize:22,color:c,fontWeight:700 }}>{v}</div>
-            <div style={{ fontSize:10,color:C.faint,fontFamily:F }}>{l}</div>
-          </Box>
-        ))}
-      </div>
-      {evento.survey.risposte>0&&STATS.map((s,i) => (<Box key={i} sx={{ marginBottom:10 }}>
-        <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
-          <span style={{ fontSize:13,color:C.text,fontFamily:F }}>{DOMANDE[i]}</span>
-          <span style={{ fontFamily:S,fontSize:17,color:C.gold,fontWeight:700 }}>{s.media} ★</span>
-        </div>
-        <div style={{ display:"flex",gap:4,alignItems:"flex-end",height:34 }}>
-          {s.d.map((v,j) => (<div key={j} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2 }}>
-            <div style={{ width:"100%",background:j===4?C.gold:j===3?C.green:C.border,height:`${v}%`,borderRadius:"2px 2px 0 0",minHeight:v>0?2:0 }} />
-            <span style={{ fontSize:8,color:C.faint }}>★{j+1}</span>
-          </div>))}
-        </div>
-      </Box>))}
-      <Btn v="secondary" onClick={() => alert("Export PDF…")} sx={{ width:"100%",marginTop:8 }}>↓ Esporta report PDF</Btn>
-    </div>}
-  </div>);
-}
 function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornata }) {
-  const [sub,setSub]=useState("main"); const [showPag,setShowPag]=useState(false);
-  const [iscritto,setIscritto]=useState(evento.iscrizioni.some(i=>i.nome===(socioProfilo?.nome || "Chen Wei")));
+  const [sub,setSub]=useState("main"); const [saving,setSaving]=useState(false);
+  const [iscritto,setIscritto]=useState(evento.iscrizioni.some(i=>i.nome===socioProfilo?.nome));
   const [calAdded,setCalAdded]=useState(false);
   const t=EV_TIPI[evento.tipo]; const sold=evento.iscritti>=evento.posti; const pct=Math.round(evento.iscritti/evento.posti*100);
+  async function handleIscrizione() {
+    if (!socioProfilo?.nome) return;
+    setSaving(true);
+    const lista = [...(evento.iscrizioni || []), { nome: socioProfilo.nome, data: new Date().toISOString() }];
+    await supabase.from('eventi').update({ iscrizioni: lista }).eq('id', evento.id);
+    const { data } = await supabase.from('eventi').select('*').eq('id', evento.id).single();
+    if (data) {
+      const evAgg = { ...evento, ...data, iscrizioni: data.iscrizioni || [], iscritti: (data.iscrizioni || []).length };
+      onIscrizioneAggiornata?.(evAgg);
+      setIscritto(true);
+    }
+    setSaving(false);
+  }
   if(sub==="iscritti") return <EvIscritti evento={evento} onBack={() => setSub("main")} isAdmin={isAdmin} />;
-  if(sub==="survey") return <EvSurvey evento={evento} onBack={() => setSub("main")} />;
   return (<div>
     <BackBtn onClick={onBack} label="← Tutti gli eventi" />
     <div style={{ background:`linear-gradient(135deg,${t.color}28,${C.alt})`,border:`1px solid ${t.color}44`,borderRadius:16,padding:20,marginBottom:14 }}>
@@ -639,28 +611,24 @@ function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornat
       </div>
     </Box>
     {!isAdmin&&<div style={{ marginBottom:12 }}>
-      {showPag
-        ? <Box><EvPagamento evento={evento} socioProfilo={socioProfilo} onClose={() => setShowPag(false)} onDone={(nuovaIscrizioni) => { setIscritto(true); const evAgg={...evento,iscrizioni:nuovaIscrizioni,iscritti:nuovaIscrizioni.length}; onIscrizioneAggiornata?.(evAgg); }} /></Box>
-        : iscritto
-          ? <div>
-              <Btn disabled sx={{ width:"100%",marginBottom:8,background:C.greenDim,color:C.green,border:`1px solid ${C.green}44` }}>Iscritto ✓</Btn>
-              <div style={{ display:"flex",gap:8 }}>
-                <Btn v="ghost" onClick={() => setIscritto(false)} sx={{ flex:1,fontSize:11 }}>Disdici</Btn>
-                <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓ In calendario":"📆 Aggiungi al cal."}</Btn>
-              </div>
+      {iscritto
+        ? <div>
+            <Btn disabled sx={{ width:"100%",marginBottom:8,background:C.greenDim,color:C.green,border:`1px solid ${C.green}44` }}>Iscritto ✓</Btn>
+            <div style={{ display:"flex",gap:8 }}>
+              <Btn v="ghost" onClick={() => setIscritto(false)} sx={{ flex:1,fontSize:11 }}>Disdici</Btn>
+              <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓ In calendario":"📆 Aggiungi al cal."}</Btn>
             </div>
-          : sold
-            ? <Btn disabled sx={{ width:"100%",background:`${C.red}15`,color:C.red,border:`1px solid ${C.red}33` }}>Posti esauriti</Btn>
-            : <div style={{ display:"flex",gap:8 }}>
-                <Btn onClick={() => setShowPag(true)} sx={{ flex:2 }}>{evento.prezzo===0?"Iscriviti gratuitamente →":`Iscriviti · € ${evento.prezzo} →`}</Btn>
-                <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓":"📆 Cal."}</Btn>
-              </div>
+          </div>
+        : sold
+          ? <Btn disabled sx={{ width:"100%",background:`${C.red}15`,color:C.red,border:`1px solid ${C.red}33` }}>Posti esauriti</Btn>
+          : <div style={{ display:"flex",gap:8 }}>
+              <Btn onClick={handleIscrizione} disabled={saving} sx={{ flex:2 }}>{saving?"…":`Iscriviti${evento.prezzo>0?` · € ${evento.prezzo}`:""} →`}</Btn>
+              <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓":"📆 Cal."}</Btn>
+            </div>
       }
     </div>}
     {isAdmin&&<div style={{ display:"flex",gap:8,marginBottom:12,flexWrap:"wrap" }}>
       <Btn v="secondary" onClick={() => setSub("iscritti")} sx={{ flex:1,fontSize:11 }}>👥 Iscritti ({evento.iscritti})</Btn>
-      <Btn v="gold" onClick={() => setSub("survey")} sx={{ flex:1,fontSize:11 }}>📊 Survey{evento.survey.inviato?" ✓":""}</Btn>
-      <Btn v="ghost" onClick={() => alert("Comunicazione inviata!")} sx={{ fontSize:13,padding:"10px 12px" }}>📨</Btn>
     </div>}
     {evento.iscrizioni.length>0&&<Box sx={{ marginBottom:10 }}>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
@@ -705,7 +673,6 @@ useEffect(() => {
       iscritti: (e.iscrizioni || []).length,
       waitlist: e.waitlist || [],
       programma: e.programma || [],
-      survey: e.survey || { inviato: false, risposte: 0, media: 0 },
     }));
     setEventi(mappati);
     setLoadingEv(false);
@@ -721,7 +688,7 @@ useEffect(() => {
   if(selected) return <EvScheda evento={selected} onBack={() => setSelected(null)} isAdmin={isAdmin} socioProfilo={socioProfilo} onIscrizioneAggiornata={(evAgg) => { setEventi(ev => ev.map(e => e.id===evAgg.id?evAgg:e)); setSelected(evAgg); }} />;
   const ECard=({ev}) => {
     const tp=EV_TIPI[ev.tipo]; const sold=ev.iscritti>=ev.posti; const pct=ev.iscritti/ev.posti;
-    const isc=ev.iscrizioni.some(i=>i.nome===(socioProfilo?.nome || "Chen Wei"));
+    const isc=ev.iscrizioni.some(i=>i.nome===socioProfilo?.nome);
     return (<Box onClick={() => setSelected(ev)} sx={{ marginBottom:12,borderLeft:`3px solid ${tp.color}` }}>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,flexWrap:"wrap",gap:6 }}>
         <div style={{ display:"flex",gap:6 }}><Tag label={`${tp.icon} ${tp.label}`} color={tp.color} sm /><AccessoBadge accesso={ev.accesso} /></div>
@@ -762,7 +729,6 @@ useEffect(() => {
               <div style={{ fontFamily:S,fontSize:16,color:C.text }}>{ev.titolo}</div>
               <div style={{ fontSize:11,color:C.faint,fontFamily:F }}>{ev.dataLabel} · {ev.iscritti} partecipanti</div>
             </div>
-            {isAdmin&&ev.survey.inviato&&<Tag label={`⭐ ${ev.survey.media}`} color={C.gold} sm />}
           </div>
         </Box>
       ))}
