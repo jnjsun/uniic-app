@@ -312,27 +312,31 @@ function SociProfilo({ socio, role, onBack, onChat }) {
         <div style={{ fontFamily:S,fontSize:18,color:C.text }}>Accesso riservato al Direttivo</div>
       </div>)}
       {sub==="storico"&&see("storico",role)&&<div>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
-          <span style={{ color:C.muted,fontFamily:F,fontSize:12 }}>Totale versato</span>
-          <span style={{ fontFamily:S,fontSize:22,color:C.gold,fontWeight:700 }}>
-            € {(socio.storico||[]).reduce((s,r)=>s+parseInt((r.quota||"0").replace(/[^0-9]/g,"")),0).toLocaleString()}
-          </span>
-        </div>
-        {[...(socio.storico||[])].reverse().map((r,i) => (
-          <div key={i} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.border}` }}>
-            <div style={{ display:"flex",gap:12,alignItems:"center" }}>
-              <div style={{ width:36,height:36,borderRadius:8,background:r.stato==="Pagato"?C.greenDim:C.redDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>{r.stato==="Pagato"?"✓":"⏳"}</div>
-              <div>
-                <div style={{ fontFamily:S,fontSize:17,color:C.text }}>{r.anno}</div>
-                <div style={{ fontSize:11,color:C.muted,fontFamily:F }}>{r.tipo}</div>
+        {!(socio.storico?.length) ? (
+          <div style={{ textAlign:"center",padding:40,color:C.muted,fontFamily:F,fontSize:14 }}>Nessuno storico disponibile</div>
+        ) : (<>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
+            <span style={{ color:C.muted,fontFamily:F,fontSize:12 }}>Totale versato</span>
+            <span style={{ fontFamily:S,fontSize:22,color:C.gold,fontWeight:700 }}>
+              € {socio.storico.reduce((s,r)=>s+parseInt((r.quota||"0").replace(/[^0-9]/g,"")),0).toLocaleString()}
+            </span>
+          </div>
+          {[...socio.storico].reverse().map((r,i) => (
+            <div key={i} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.border}` }}>
+              <div style={{ display:"flex",gap:12,alignItems:"center" }}>
+                <div style={{ width:36,height:36,borderRadius:8,background:r.stato==="Pagato"?C.greenDim:C.redDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>{r.stato==="Pagato"?"✓":"⏳"}</div>
+                <div>
+                  <div style={{ fontFamily:S,fontSize:17,color:C.text }}>{r.anno}</div>
+                  <div style={{ fontSize:11,color:C.muted,fontFamily:F }}>{r.tipo}</div>
+                </div>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontFamily:S,fontSize:16,color:C.text }}>{r.quota}</div>
+                <Tag label={r.stato} color={r.stato==="Pagato"?C.green:C.gold} sm />
               </div>
             </div>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontFamily:S,fontSize:16,color:C.text }}>{r.quota}</div>
-              <Tag label={r.stato} color={r.stato==="Pagato"?C.green:C.gold} sm />
-            </div>
-          </div>
-        ))}
+          ))}
+        </>)}
       </div>}
     </div>
   );
@@ -359,7 +363,6 @@ async function caricaSoci() {
   const [filterTipo, setFilterTipo] = useState("tutti");
   const [showFilters, setShowFilters] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [chatWith, setChatWith] = useState(null);
   useEffect(() => {
     if (!openId || !sociDB.length) return;
     const s = sociDB.find(x => x.id === openId);
@@ -371,8 +374,8 @@ async function caricaSoci() {
     return (!q||s.nome.toLowerCase().includes(q)||s.impresa_nome.toLowerCase().includes(q)||s.impresa_settore.toLowerCase().includes(q))
       &&(filterTipo==="tutti"||s.tipo===filterTipo);
 }),[sociDB,search,filterTipo]);
-  if(loading) return <div style={{textAlign:"center",padding:40,color:C.muted,fontFamily:F}}>Caricamento...</div>;if(chatWith) return <SociChat socio={chatWith} onBack={() => setChatWith(null)} />;
-  if(selected) return <SociProfilo socio={selected} role={role} onBack={() => setSelected(null)} onChat={s=>{setSelected(null);setChatWith(s);}} />;
+  if(loading) return <div style={{textAlign:"center",padding:40,color:C.muted,fontFamily:F}}>Caricamento...</div>;
+  if(selected) return <SociProfilo socio={selected} role={role} onBack={() => setSelected(null)} onChat={() => alert("Funzionalità in arrivo")} />;
   return (
     <div>
       <SecTitle title="Soci UNIIC" sub={`${filtered.length} di ${sociDB.length} soci`} />
@@ -392,9 +395,6 @@ async function caricaSoci() {
           ))}
         </div>
       </Box>}
-      <div style={{ marginBottom:10,padding:"6px 10px",background:C.goldDim,borderRadius:8,fontSize:11,color:C.gold,fontFamily:F }}>
-        🔑 Vista: <strong>{role}</strong> — i campi bloccati 🔒 cambiano in base al ruolo
-      </div>
       {filtered.map(s => (
         <Box key={s.id} sx={{ marginBottom:10 }} onClick={() => setSelected(s)}>
           <div style={{ display:"flex",alignItems:"center",gap:12 }}>
@@ -412,7 +412,7 @@ async function caricaSoci() {
             </div>
           </div>
           <div style={{ display:"flex",gap:8,marginTop:10 }}>
-            <button onClick={e=>{e.stopPropagation();setChatWith(s);}} style={{ flex:1,background:C.redDim,border:`1px solid ${C.red}33`,color:C.red,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>💬 Messaggio</button>
+            <button onClick={e=>{e.stopPropagation();alert("Funzionalità in arrivo");}} style={{ flex:1,background:C.redDim,border:`1px solid ${C.red}33`,color:C.red,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>💬 Messaggio</button>
             <button onClick={e=>{e.stopPropagation();setSelected(s);}} style={{ flex:2,background:C.alt,border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>Vedi profilo →</button>
           </div>
         </Box>
