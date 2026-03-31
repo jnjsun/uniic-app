@@ -101,7 +101,7 @@ const Stars = ({ val, onChange, size=18 }) => (
     ))}
   </div>
 );
-const FieldRow = ({ icon, label, value, locked }) => (
+const FieldRow = ({ icon, label, value, locked, href }) => (
   <div style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
     <span style={{ fontSize:14, flexShrink:0, marginTop:1 }}>{icon}</span>
     <div style={{ flex:1, minWidth:0 }}>
@@ -111,7 +111,9 @@ const FieldRow = ({ icon, label, value, locked }) => (
             <div style={{ width:80, height:10, background:C.border, borderRadius:3 }} />
             <span style={{ fontSize:9, color:C.faint, fontFamily:F }}>🔒 accesso limitato</span>
           </div>
-        : <div style={{ fontSize:13, color:C.text, fontFamily:F, lineHeight:1.4 }}>{value||"—"}</div>
+        : href
+          ? <a href={href} style={{ fontSize:13, color:C.gold, fontFamily:F, lineHeight:1.4, textDecoration:"none" }}>{value||"—"}</a>
+          : <div style={{ fontSize:13, color:C.text, fontFamily:F, lineHeight:1.4 }}>{value||"—"}</div>
       }
     </div>
   </div>
@@ -257,10 +259,36 @@ function SociChat({ socio, onBack }) {
     </div>
   );
 }
-function SociProfilo({ socio, role, onBack, onChat }) {
+function SociProfilo({ socio, role, onBack, isAdmin }) {
   const [sub, setSub] = useState("info");
-  const tcMap = { direttivo:C.red,sostenitore:C.gold,ordinario:C.blue };
+  const [showRuoloMenu, setShowRuoloMenu] = useState(false);
+  const [localTipo, setLocalTipo] = useState(socio.tipo || "ordinario");
+  const [localRuolo, setLocalRuolo] = useState(socio.ruolo_uniic || "");
+  const [ruoloCommento, setRuoloCommento] = useState(socio.ruolo_commento || "");
+  const [savingRuolo, setSavingRuolo] = useState(false);
+  const tcMap = { direttivo:C.red,sostenitore:C.gold,ordinario:C.blue,presidente:C.purple };
   const subTabs = ["info","impresa","famiglia",...(see("storico",role)?["storico"]:[])];
+
+  const RUOLI_OPTIONS = [
+    { label:"Direttivo", tipo:"direttivo" },
+    { label:"Ordinario", tipo:"ordinario" },
+    { label:"Presidente", tipo:"direttivo" },
+    { label:"Presidente Onorario", tipo:"direttivo" },
+  ];
+
+  const salvaRuolo = async (ruolo) => {
+    setSavingRuolo(true);
+    setLocalRuolo(ruolo.label);
+    setLocalTipo(ruolo.tipo);
+    setShowRuoloMenu(false);
+    await supabase.from('soci').update({ tipo: ruolo.tipo, ruolo_uniic: ruolo.label }).eq('id', socio.id);
+    setSavingRuolo(false);
+  };
+
+  const salvaCommento = async () => {
+    await supabase.from('soci').update({ ruolo_commento: ruoloCommento || null }).eq('id', socio.id);
+  };
+
   return (
     <div>
       <BackBtn onClick={onBack} label="← Elenco soci" />
@@ -269,16 +297,55 @@ function SociProfilo({ socio, role, onBack, onChat }) {
           <Avatar initials={socio.initials} size={64} color={socio.colorAccent} />
           <div style={{ flex:1 }}>
             <h2 style={{ fontFamily:S,fontSize:24,color:C.text,margin:"0 0 6px",lineHeight:1.1 }}>{socio.nome}</h2>
-            <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-              {socio.ruolo_uniic&&<Tag label={socio.ruolo_uniic} color={tcMap[socio.tipo]||C.blue} />}
+            <div style={{ display:"flex",gap:6,flexWrap:"wrap",alignItems:"center" }}>
+              {localRuolo && (
+                isAdmin ? (
+                  <div style={{ position:"relative" }}>
+                    <span onClick={() => setShowRuoloMenu(m=>!m)} style={{ cursor:"pointer" }}>
+                      <Tag label={localRuolo} color={tcMap[localTipo]||C.blue} />
+                    </span>
+                    {showRuoloMenu && (
+                      <div style={{ position:"absolute",top:26,left:0,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:6,zIndex:20,minWidth:180,boxShadow:"0 8px 24px rgba(0,0,0,.5)" }}>
+                        {RUOLI_OPTIONS.map(r => (
+                          <button key={r.label} onClick={() => salvaRuolo(r)} style={{ display:"block",width:"100%",background:localRuolo===r.label?C.goldDim:"none",border:"none",color:localRuolo===r.label?C.gold:C.text,fontFamily:F,fontSize:12,padding:"8px 12px",cursor:"pointer",textAlign:"left",borderRadius:6 }}>
+                            {r.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : <Tag label={localRuolo} color={tcMap[localTipo]||C.blue} />
+              )}
               {see("eta",role)&&socio.eta&&<Tag label={`${socio.eta} anni`} color={C.muted} />}
             </div>
+            {isAdmin && (
+              <div style={{ marginTop:8 }}>
+                <input
+                  value={ruoloCommento}
+                  onChange={e => setRuoloCommento(e.target.value)}
+                  onBlur={salvaCommento}
+                  placeholder="Commento sul ruolo (es. Segretario Generale)"
+                  style={{ background:"none",border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 8px",color:C.muted,fontFamily:F,fontSize:11,width:"100%",boxSizing:"border-box",outline:"none" }}
+                />
+              </div>
+            )}
+            {!isAdmin && ruoloCommento && (
+              <div style={{ fontSize:11,color:C.muted,fontFamily:F,marginTop:4 }}>{ruoloCommento}</div>
+            )}
             <div style={{ fontSize:12,color:C.muted,fontFamily:F,marginTop:8 }}>📍 {socio.citta||"—"} · Socio dal {socio.anno_iscritto||"—"}</div>
           </div>
         </div>
-        <div style={{ display:"flex",gap:8,marginTop:14 }}>
-          <Btn onClick={() => onChat(socio)} sx={{ flex:1 }}>💬 Messaggio</Btn>
-          {see("telefono",role)&&<Btn v="secondary" sx={{ flex:1 }}>📞 Chiama</Btn>}
+        <div style={{ display:"flex",gap:8,marginTop:14,flexWrap:"wrap" }}>
+          {socio.whatsapp && (
+            <a href={`https://wa.me/${String(socio.whatsapp).replace(/\D/g,"")}`} style={{ flex:1,textDecoration:"none" }}>
+              <Btn sx={{ width:"100%" }}>💬 WhatsApp</Btn>
+            </a>
+          )}
+          {socio.wechat_id && (
+            <a href={`weixin://dl/chat?${socio.wechat_id}`} style={{ flex:1,textDecoration:"none" }}>
+              <Btn v="green" sx={{ width:"100%" }}>🟢 WeChat</Btn>
+            </a>
+          )}
         </div>
       </div>
       <div style={{ display:"flex",background:C.alt,borderRadius:10,padding:3,marginBottom:16 }}>
@@ -290,8 +357,8 @@ function SociProfilo({ socio, role, onBack, onChat }) {
         ))}
       </div>
       {sub==="info"&&<div>
-        <FieldRow icon="📧" label="EMAIL" value={socio.email} locked={!see("email",role)} />
-        <FieldRow icon="📞" label="TELEFONO" value={socio.telefono||"—"} locked={!see("telefono",role)} />
+        <FieldRow icon="📧" label="EMAIL" value={socio.email} locked={!see("email",role)} href={see("email",role)&&socio.email?`mailto:${socio.email}`:null} />
+        <FieldRow icon="📞" label="TELEFONO" value={socio.telefono||"—"} locked={!see("telefono",role)} href={see("telefono",role)&&socio.telefono?`tel:${socio.telefono}`:null} />
         <FieldRow icon="🌐" label="NAZIONALITÀ" value={socio.nazionalita||"—"} locked={!see("nazionalita",role)} />
         {socio.eta&&<FieldRow icon="🎂" label="ETÀ" value={`${socio.eta} anni`} locked={!see("eta",role)} />}
         {see("hobby",role)&&socio.hobby?.length>0&&<div style={{ padding:"10px 0" }}>
@@ -374,8 +441,9 @@ async function caricaSoci() {
     return (!q||s.nome.toLowerCase().includes(q)||s.impresa_nome.toLowerCase().includes(q)||s.impresa_settore.toLowerCase().includes(q))
       &&(filterTipo==="tutti"||s.tipo===filterTipo);
 }),[sociDB,search,filterTipo]);
+  const isAdminUser = role === "direttivo";
   if(loading) return <div style={{textAlign:"center",padding:40,color:C.muted,fontFamily:F}}>Caricamento...</div>;
-  if(selected) return <SociProfilo socio={selected} role={role} onBack={() => setSelected(null)} onChat={() => alert("Funzionalità in arrivo")} />;
+  if(selected) return <SociProfilo socio={selected} role={role} isAdmin={isAdminUser} onBack={() => setSelected(null)} />;
   return (
     <div>
       <SecTitle title="Soci UNIIC" sub={`${filtered.length} di ${sociDB.length} soci`} />
@@ -412,7 +480,8 @@ async function caricaSoci() {
             </div>
           </div>
           <div style={{ display:"flex",gap:8,marginTop:10 }}>
-            <button onClick={e=>{e.stopPropagation();alert("Funzionalità in arrivo");}} style={{ flex:1,background:C.redDim,border:`1px solid ${C.red}33`,color:C.red,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>💬 Messaggio</button>
+            {s.whatsapp && <a href={`https://wa.me/${String(s.whatsapp).replace(/\D/g,"")}`} onClick={e=>e.stopPropagation()} style={{ flex:1,textDecoration:"none" }}><button style={{ width:"100%",background:C.redDim,border:`1px solid ${C.red}33`,color:C.red,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>💬 WA</button></a>}
+            {s.wechat_id && <a href={`weixin://dl/chat?${s.wechat_id}`} onClick={e=>e.stopPropagation()} style={{ flex:1,textDecoration:"none" }}><button style={{ width:"100%",background:C.greenDim,border:`1px solid ${C.green}33`,color:C.green,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>🟢 WeChat</button></a>}
             <button onClick={e=>{e.stopPropagation();setSelected(s);}} style={{ flex:2,background:C.alt,border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>Vedi profilo →</button>
           </div>
         </Box>
@@ -513,37 +582,93 @@ function EvPagamento({ evento, onClose, onDone, socioProfilo }) {
   </div>);
 }
 function EvIscritti({ evento, onBack, isAdmin }) {
-  const [lista,setLista]=useState(evento.iscrizioni); const [waitlist,setWaitlist]=useState(evento.waitlist);
+  const [lista,setLista]=useState(evento.iscrizioni); const [waitlist,setWaitlist]=useState(evento.waitlist||[]);
+  const [showComunicazione,setShowComunicazione]=useState(false);
+  const [msgComunicazione,setMsgComunicazione]=useState("");
   const tc={direttivo:C.red,sostenitore:C.gold,ordinario:C.blue};
+
+  const STATO_COLORS = { confermato:C.green, "in attesa":C.gold, "waiting list":C.orange };
+
+  const esportaCSV = () => {
+    const headers = ["Nome","Data iscrizione","Stato","Ospiti","Pagamento"];
+    const rows = lista.map(p => [
+      p.nome||"",
+      p.data ? new Date(p.data).toLocaleDateString("it-IT") : "",
+      p.stato||"confermato",
+      p.ospiti||0,
+      p.pagamento||"—",
+    ]);
+    const csv = [headers,...rows].map(r=>r.join(";")).join("\n");
+    const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download=`iscritti_${evento.titolo||"evento"}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const promuoviDaWaitlist = async (nome, idx) => {
+    if (!window.confirm(`Promuovere "${nome}" dalla waiting list?`)) return;
+    const nuovaLista = [...lista, { nome, data: new Date().toISOString(), stato:"confermato" }];
+    const nuovaWaitlist = waitlist.filter((_,i)=>i!==idx);
+    await supabase.from('eventi').update({ iscrizioni: nuovaLista, waitlist: nuovaWaitlist }).eq('id', evento.id);
+    setLista(nuovaLista); setWaitlist(nuovaWaitlist);
+  };
+
   return (<div>
     <BackBtn onClick={onBack} label="← Torna all'evento" />
-    <div style={{ marginBottom:12 }}>
-      <h3 style={{ fontFamily:S,fontSize:22,color:C.text,margin:0 }}>Partecipanti ({evento.iscritti})</h3>
+    <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+      <h3 style={{ fontFamily:S,fontSize:22,color:C.text,margin:0 }}>Partecipanti ({lista.length})</h3>
+      {isAdmin&&<div style={{ display:"flex",gap:6 }}>
+        <button onClick={esportaCSV} style={{ background:C.greenDim,border:`1px solid ${C.green}44`,color:C.green,borderRadius:8,padding:"6px 10px",fontFamily:F,fontSize:11,cursor:"pointer" }}>📥 Export</button>
+        <button onClick={() => setShowComunicazione(true)} style={{ background:C.blueDim,border:`1px solid ${C.blue}44`,color:C.blue,borderRadius:8,padding:"6px 10px",fontFamily:F,fontSize:11,cursor:"pointer" }}>✉️ Comunicazione</button>
+      </div>}
     </div>
-    <Bar val={evento.iscritti} max={evento.posti} color={evento.iscritti/evento.posti>.9?C.red:evento.iscritti/evento.posti>.7?C.gold:C.green} />
+    <Bar val={lista.length} max={evento.posti} color={lista.length/evento.posti>.9?C.red:lista.length/evento.posti>.7?C.gold:C.green} />
     <div style={{ height:10 }} />
-    {lista.map((p,i) => (
-      <Box key={p.id||i} sx={{ marginBottom:8 }}>
+    {lista.map((p,i) => {
+      const stato = p.stato || "confermato";
+      return (<Box key={p.id||i} sx={{ marginBottom:8 }}>
         <div style={{ display:"flex",alignItems:"center",gap:12 }}>
           <div style={{ width:36,height:36,borderRadius:"50%",background:`${tc[p.tipo]||C.blue}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0 }}>👤</div>
           <div style={{ flex:1 }}>
-            <span style={{ fontFamily:S,fontSize:16,color:C.text,fontWeight:700 }}>{p.nome}</span>
-            {p.tipo&&<div style={{ marginTop:4 }}><Tag label={p.tipo} color={tc[p.tipo]||C.blue} sm /></div>}
+            <div style={{ display:"flex",alignItems:"center",gap:6,flexWrap:"wrap" }}>
+              <span style={{ fontFamily:S,fontSize:16,color:C.text,fontWeight:700 }}>{p.nome}</span>
+              <Tag label={stato} color={STATO_COLORS[stato]||C.blue} sm />
+            </div>
+            <div style={{ display:"flex",gap:10,marginTop:4,flexWrap:"wrap" }}>
+              {p.tipo&&<Tag label={p.tipo} color={tc[p.tipo]||C.blue} sm />}
+              {(p.ospiti>0||isAdmin)&&<span style={{ fontSize:11,color:C.muted,fontFamily:F }}>👥 {p.ospiti||0} ospiti</span>}
+              {isAdmin&&p.pagamento&&<span style={{ fontSize:11,color:C.gold,fontFamily:F }}>💳 {p.pagamento}</span>}
+            </div>
           </div>
         </div>
-      </Box>
-    ))}
+      </Box>);
+    })}
     {waitlist.length>0&&<div style={{ marginTop:18 }}>
       <h4 style={{ fontFamily:S,fontSize:17,color:C.gold,margin:"0 0 10px" }}>Lista d'attesa ({waitlist.length})</h4>
       {waitlist.map((nome,i) => (
-        <Box key={nome} sx={{ marginBottom:8,borderColor:`${C.gold}33` }}>
+        <Box key={nome+i} sx={{ marginBottom:8,borderColor:`${C.gold}33` }}>
           <div style={{ display:"flex",alignItems:"center",gap:10 }}>
             <span style={{ fontSize:14,color:C.gold,fontFamily:F,fontWeight:700 }}>#{i+1}</span>
-            <span style={{ fontFamily:S,fontSize:16,color:C.text }}>{nome}</span>
+            <span style={{ fontFamily:S,fontSize:16,color:C.text,flex:1 }}>{nome}</span>
+            {isAdmin&&<button onClick={() => promuoviDaWaitlist(nome,i)} style={{ background:C.greenDim,border:`1px solid ${C.green}44`,color:C.green,borderRadius:8,padding:"5px 10px",fontFamily:F,fontSize:11,cursor:"pointer" }}>Promuovi ↑</button>}
           </div>
         </Box>
       ))}
     </div>}
+
+    {showComunicazione&&(
+      <div onClick={() => setShowComunicazione(false)} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center" }}>
+        <div onClick={e=>e.stopPropagation()} style={{ background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:24,width:320,maxWidth:"90vw" }}>
+          <h4 style={{ fontFamily:S,fontSize:18,color:C.text,margin:"0 0 14px" }}>Invia comunicazione</h4>
+          <div style={{ fontSize:11,color:C.muted,fontFamily:F,marginBottom:8 }}>Messaggio per {lista.length} iscritti:</div>
+          <textarea value={msgComunicazione} onChange={e=>setMsgComunicazione(e.target.value)} rows={5} placeholder="Scrivi il messaggio da inviare a tutti gli iscritti…" style={{ width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",color:C.text,fontFamily:F,fontSize:13,resize:"vertical",boxSizing:"border-box",outline:"none" }} />
+          <div style={{ display:"flex",gap:8,marginTop:14 }}>
+            <button onClick={() => setShowComunicazione(false)} style={{ flex:1,background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"9px",color:C.muted,fontFamily:F,fontSize:12,cursor:"pointer" }}>Annulla</button>
+            <button onClick={() => { alert("Comunicazione inviata a "+lista.length+" iscritti!"); setShowComunicazione(false); setMsgComunicazione(""); }} disabled={!msgComunicazione.trim()} style={{ flex:2,background:C.blue,border:"none",borderRadius:8,padding:"9px",color:"#fff",fontFamily:F,fontSize:12,fontWeight:600,cursor:"pointer",opacity:msgComunicazione.trim()?1:0.5 }}>✉️ Invia</button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>);
 }
 function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornata }) {
@@ -560,6 +685,20 @@ function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornat
       const evAgg = { ...evento, ...data, iscrizioni: data.iscrizioni || [], iscritti: (data.iscrizioni || []).length };
       onIscrizioneAggiornata?.(evAgg);
       setIscritto(true);
+    }
+    setSaving(false);
+  }
+  async function handleRimuoviIscrizione() {
+    if (!window.confirm("Vuoi annullare la tua iscrizione?")) return;
+    setSaving(true);
+    const nome = socioProfilo?.nome || 'Socio';
+    const lista = (evento.iscrizioni || []).filter(i => i.nome !== nome);
+    await supabase.from('eventi').update({ iscrizioni: lista }).eq('id', evento.id);
+    const { data } = await supabase.from('eventi').select('*').eq('id', evento.id).single();
+    if (data) {
+      const evAgg = { ...evento, ...data, iscrizioni: data.iscrizioni || [], iscritti: (data.iscrizioni || []).length };
+      onIscrizioneAggiornata?.(evAgg);
+      setIscritto(false);
     }
     setSaving(false);
   }
@@ -599,14 +738,14 @@ function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornat
         {evento.iscritti>5&&<div style={{ width:34,height:34,borderRadius:"50%",background:C.alt,border:`2px solid ${C.bg}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.muted,marginLeft:-10,fontFamily:F }}>+{evento.iscritti-5}</div>}
       </div>
     </Box>}
-    {!isAdmin&&<div style={{ marginBottom:14 }}>
+    <div style={{ marginBottom:14 }}>
       {iscritto
-        ? <Btn disabled sx={{ width:"100%",background:C.greenDim,color:C.green,border:`1px solid ${C.green}44`,fontSize:16,padding:"14px" }}>Iscritto ✓</Btn>
+        ? <Btn onClick={handleRimuoviIscrizione} disabled={saving} sx={{ width:"100%",background:C.greenDim,color:C.green,border:`1px solid ${C.green}44`,fontSize:16,padding:"14px" }}>{saving?"…":"Iscritto ✓"}</Btn>
         : sold
           ? <Btn disabled sx={{ width:"100%",background:`${C.faint}30`,color:C.muted,border:`1px solid ${C.border}`,fontSize:16,padding:"14px" }}>Posti esauriti</Btn>
           : <Btn onClick={handleIscrizione} disabled={saving} sx={{ width:"100%",fontSize:16,padding:"14px" }}>{saving?"…":"Iscriviti"}</Btn>
       }
-    </div>}
+    </div>
     <Box sx={{ marginBottom:10 }}>
       <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 8px" }}>Descrizione</h4>
       <p style={{ color:C.muted,fontSize:13,fontFamily:F,lineHeight:1.7,margin:0 }}>{evento.desc}</p>
@@ -1431,13 +1570,14 @@ function AccountSection({ socioProfilo, session }) {
     telefono: socioProfilo?.telefono || "",
     citta: socioProfilo?.citta || "",
     nazionalita: socioProfilo?.nazionalita || "",
-    data_nascita: socioProfilo?.data_nascita || "",
-    impresa_nome: socioProfilo?.impresa_nome || "",
-    impresa_ruolo: socioProfilo?.impresa_ruolo || "",
-    impresa_sito: socioProfilo?.impresa_sito || "",
+    azienda: socioProfilo?.azienda || "",
+    ruolo_azienda: socioProfilo?.ruolo_azienda || "",
+    sito_web: socioProfilo?.sito_web || "",
     stato_civile: socioProfilo?.stato_civile || "",
-    figli: socioProfilo?.famiglia?.figli ?? "",
+    num_figli: socioProfilo?.num_figli ?? "",
     hobby: Array.isArray(socioProfilo?.hobby) ? socioProfilo.hobby.join(", ") : (socioProfilo?.hobby || ""),
+    whatsapp: socioProfilo?.whatsapp || "",
+    wechat_id: socioProfilo?.wechat_id || "",
   });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -1463,13 +1603,14 @@ function AccountSection({ socioProfilo, session }) {
       telefono: form.telefono,
       citta: form.citta,
       nazionalita: form.nazionalita,
-      data_nascita: form.data_nascita || null,
-      impresa_nome: form.impresa_nome,
-      impresa_ruolo: form.impresa_ruolo,
-      impresa_sito: form.impresa_sito,
-      stato_civile: form.stato_civile,
-      famiglia: { ...(socioProfilo?.famiglia || {}), figli: form.figli === "" ? null : Number(form.figli) },
+      azienda: form.azienda || null,
+      ruolo_azienda: form.ruolo_azienda || null,
+      sito_web: form.sito_web || null,
+      stato_civile: form.stato_civile || null,
+      num_figli: form.num_figli === "" ? null : Number(form.num_figli),
       hobby: form.hobby || null,
+      whatsapp: form.whatsapp || null,
+      wechat_id: form.wechat_id || null,
     }).eq('email', session.user.email);
     setSaving(false);
     setMsg(error ? "Errore: " + error.message : "Modifiche salvate!");
@@ -1515,8 +1656,9 @@ function AccountSection({ socioProfilo, session }) {
           <div><label style={LABEL}>Telefono</label><input style={INPUT} value={form.telefono} onChange={e => set("telefono", e.target.value)} placeholder="+39 000 0000000" type="tel" /></div>
           <div><label style={LABEL}>Città</label><input style={INPUT} value={form.citta} onChange={e => set("citta", e.target.value)} placeholder="Milano" /></div>
           <div><label style={LABEL}>Nazionalità</label><input style={INPUT} value={form.nazionalita} onChange={e => set("nazionalita", e.target.value)} placeholder="Italiana" /></div>
-          <div><label style={LABEL}>Data di nascita</label><input style={INPUT} value={form.data_nascita} onChange={e => set("data_nascita", e.target.value)} type="date" /></div>
           <div><label style={LABEL}>Hobby</label><input style={INPUT} value={form.hobby} onChange={e => set("hobby", e.target.value)} placeholder="es. Tennis, Fotografia, Cucina" /></div>
+          <div><label style={LABEL}>Numero WhatsApp</label><input style={INPUT} value={form.whatsapp} onChange={e => set("whatsapp", e.target.value)} placeholder="+39 000 0000000" type="tel" /></div>
+          <div><label style={LABEL}>ID WeChat</label><input style={INPUT} value={form.wechat_id} onChange={e => set("wechat_id", e.target.value)} placeholder="il tuo ID WeChat" /></div>
         </div>
       </Box>
 
@@ -1524,9 +1666,9 @@ function AccountSection({ socioProfilo, session }) {
       <Box sx={{ marginBottom:14 }}>
         <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Settore / Impresa</div>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          <div><label style={LABEL}>Nome azienda</label><input style={INPUT} value={form.impresa_nome} onChange={e => set("impresa_nome", e.target.value)} placeholder="Acme S.r.l." /></div>
-          <div><label style={LABEL}>Ruolo</label><input style={INPUT} value={form.impresa_ruolo} onChange={e => set("impresa_ruolo", e.target.value)} placeholder="CEO, Responsabile, …" /></div>
-          <div><label style={LABEL}>Sito web</label><input style={INPUT} value={form.impresa_sito} onChange={e => set("impresa_sito", e.target.value)} placeholder="https://…" type="url" /></div>
+          <div><label style={LABEL}>Nome azienda</label><input style={INPUT} value={form.azienda} onChange={e => set("azienda", e.target.value)} placeholder="Acme S.r.l." /></div>
+          <div><label style={LABEL}>Ruolo</label><input style={INPUT} value={form.ruolo_azienda} onChange={e => set("ruolo_azienda", e.target.value)} placeholder="CEO, Responsabile, …" /></div>
+          <div><label style={LABEL}>Sito web</label><input style={INPUT} value={form.sito_web} onChange={e => set("sito_web", e.target.value)} placeholder="https://…" type="url" /></div>
         </div>
       </Box>
 
@@ -1535,7 +1677,7 @@ function AccountSection({ socioProfilo, session }) {
         <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Famiglia</div>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           <div><label style={LABEL}>Stato civile</label><input style={INPUT} value={form.stato_civile} onChange={e => set("stato_civile", e.target.value)} placeholder="Celibe, Coniugato, …" /></div>
-          <div><label style={LABEL}>Numero figli</label><input style={INPUT} value={form.figli} onChange={e => set("figli", e.target.value)} placeholder="0" type="number" min="0" /></div>
+          <div><label style={LABEL}>Numero figli</label><input style={INPUT} value={form.num_figli} onChange={e => set("num_figli", e.target.value)} placeholder="0" type="number" min="0" /></div>
         </div>
         {msg && <div style={{ fontFamily:F, fontSize:12, color: msg.startsWith("Errore") ? C.red : C.green, marginTop:10 }}>{msg}</div>}
         <Btn onClick={salvaModifiche} v="primary" sx={{ width:"100%", marginTop:14 }}>{saving ? "Salvataggio…" : "Salva modifiche"}</Btn>
@@ -1578,8 +1720,6 @@ function AccountSection({ socioProfilo, session }) {
         )}
       </Box>
 
-      {/* Logout */}
-      <Btn onClick={() => supabase.auth.signOut()} v="danger" sx={{ width:"100%" }}>Esci dall'app</Btn>
     </div>
   );
 }
