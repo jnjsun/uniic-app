@@ -1895,6 +1895,103 @@ function AdminSection({ socioProfilo, session }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODALE RICERCA GLOBALE
+// ═══════════════════════════════════════════════════════════════════════════════
+function SearchModal({ onClose, onNav }) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState({ soci:[], eventi:[], articoli:[], convenzioni:[] });
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  useEffect(() => {
+    if (!q.trim()) { setResults({ soci:[], eventi:[], articoli:[], convenzioni:[] }); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      const term = `%${q.trim()}%`;
+      const [r1, r2, r3, r4] = await Promise.all([
+        supabase.from('soci').select('id,nome').ilike('nome', term).limit(5),
+        supabase.from('eventi').select('id,titolo').ilike('titolo', term).limit(5),
+        supabase.from('articoli').select('id,titolo').ilike('titolo', term).limit(5),
+        supabase.from('convenzioni').select('id,nome').ilike('nome', term).limit(5),
+      ]);
+      setResults({
+        soci: r1.data || [],
+        eventi: r2.data || [],
+        articoli: r3.data || [],
+        convenzioni: r4.data || [],
+      });
+      setLoading(false);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const total = results.soci.length + results.eventi.length + results.articoli.length + results.convenzioni.length;
+  const cats = [
+    { key:"soci",        label:"Soci",        icon:"👥", tab:"soci",        field:"nome" },
+    { key:"eventi",      label:"Eventi",      icon:"📅", tab:"eventi",      field:"titolo" },
+    { key:"articoli",    label:"Articoli",    icon:"📰", tab:"newsletter",  field:"titolo" },
+    { key:"convenzioni", label:"Convenzioni", icon:"🤝", tab:"convenzioni", field:"nome" },
+  ];
+
+  return (
+    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.82)", zIndex:2000, display:"flex", alignItems:"flex-start", justifyContent:"center", paddingTop:56 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width:358, maxWidth:"92vw", background:C.bg, border:`1px solid ${C.gold}55`, borderRadius:16, overflow:"hidden", boxShadow:`0 20px 60px rgba(0,0,0,.8), 0 0 0 1px ${C.gold}22` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:`1px solid ${C.border}` }}>
+          <span style={{ fontSize:15, color:C.gold }}>🔍</span>
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Cerca soci, eventi, articoli, convenzioni…"
+            style={{ flex:1, background:"none", border:"none", outline:"none", color:C.text, fontFamily:F, fontSize:13, caretColor:C.gold }}
+          />
+          {q && (
+            <button onClick={() => setQ("")} style={{ background:"none", border:"none", color:C.muted, fontSize:18, cursor:"pointer", padding:0, lineHeight:1 }}>×</button>
+          )}
+        </div>
+        <div style={{ maxHeight:"65vh", overflowY:"auto" }}>
+          {!q.trim() && (
+            <div style={{ textAlign:"center", padding:"32px 16px", color:C.faint, fontFamily:F, fontSize:12 }}>
+              Inizia a digitare per cercare…
+            </div>
+          )}
+          {q.trim() && loading && (
+            <div style={{ textAlign:"center", padding:"24px", color:C.muted, fontFamily:F, fontSize:12 }}>Ricerca in corso…</div>
+          )}
+          {q.trim() && !loading && total === 0 && (
+            <div style={{ textAlign:"center", padding:"24px", color:C.faint, fontFamily:F, fontSize:12 }}>Nessun risultato per «{q}»</div>
+          )}
+          {q.trim() && !loading && cats.map(cat => {
+            const items = results[cat.key];
+            if (!items.length) return null;
+            return (
+              <div key={cat.key}>
+                <div style={{ padding:"10px 16px 6px", fontSize:10, color:C.gold, fontFamily:F, fontWeight:600, letterSpacing:1.2, textTransform:"uppercase", borderTop:`1px solid ${C.border}` }}>
+                  {cat.icon} {cat.label}
+                </div>
+                {items.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => { onNav(cat.tab); onClose(); }}
+                    style={{ width:"100%", textAlign:"left", background:"none", border:"none", padding:"10px 16px 10px 28px", color:C.text, fontFamily:F, fontSize:13, cursor:"pointer", display:"block", borderBottom:`1px solid ${C.border}22`, transition:"background .15s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = C.goldDim}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >
+                    {item[cat.field]}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState("home");
   const [role, setRole] = useState("ordinario");
@@ -1903,6 +2000,7 @@ export default function App() {
   const isAdmin = role === "direttivo";
   const isSuperAdmin = session?.user?.email === "jj@suncapital.it";
   const [socioProfilo, setSocioProfilo] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
 
 useEffect(() => {
   if (!session) return;
@@ -1968,6 +2066,7 @@ useEffect(() => {
             </div>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <button onClick={() => setShowSearch(true)} style={{ background:"none", border:`1px solid ${C.gold}44`, borderRadius:8, padding:"4px 9px", color:C.gold, fontFamily:F, fontSize:14, cursor:"pointer", lineHeight:1 }} title="Cerca">🔍</button>
             <div style={{ width:8, height:8, background:C.green, borderRadius:"50%" }} />
             <button onClick={logout} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"4px 10px", color:C.muted, fontFamily:F, fontSize:11, cursor:"pointer" }}>Esci</button>
           </div>
@@ -1975,6 +2074,7 @@ useEffect(() => {
         <div style={{ flex:1, overflowY:"auto", padding:"18px 16px 80px" }}>
           {renderSection()}
         </div>
+        {showSearch && <SearchModal onClose={() => setShowSearch(false)} onNav={setTab} />}
         <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
           {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},...(isSuperAdmin?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
             <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0" }}>
