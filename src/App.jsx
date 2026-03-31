@@ -575,13 +575,13 @@ function EvIscritti({ evento, onBack, isAdmin }) {
 }
 function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornata }) {
   const [sub,setSub]=useState("main"); const [saving,setSaving]=useState(false);
-  const [iscritto,setIscritto]=useState(evento.iscrizioni.some(i=>i.nome===socioProfilo?.nome));
+  const [iscritto,setIscritto]=useState(evento.iscrizioni.some(i=>i.nome===(socioProfilo?.nome||'Socio')));
   const [calAdded,setCalAdded]=useState(false);
   const t=EV_TIPI[evento.tipo]; const sold=evento.iscritti>=evento.posti; const pct=Math.round(evento.iscritti/evento.posti*100);
   async function handleIscrizione() {
-    if (!socioProfilo?.nome) return;
     setSaving(true);
-    const lista = [...(evento.iscrizioni || []), { nome: socioProfilo.nome, data: new Date().toISOString() }];
+    const nome = socioProfilo?.nome || 'Socio';
+    const lista = [...(evento.iscrizioni || []), { nome, data: new Date().toISOString() }];
     await supabase.from('eventi').update({ iscrizioni: lista }).eq('id', evento.id);
     const { data } = await supabase.from('eventi').select('*').eq('id', evento.id).single();
     if (data) {
@@ -632,12 +632,9 @@ function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornat
             </div>
       }
     </div>}
-    {isAdmin&&<div style={{ display:"flex",gap:8,marginBottom:12,flexWrap:"wrap" }}>
-      <Btn v="secondary" onClick={() => setSub("iscritti")} sx={{ flex:1,fontSize:11 }}>👥 Iscritti ({evento.iscritti})</Btn>
-    </div>}
     {evento.iscrizioni.length>0&&<Box sx={{ marginBottom:10 }}>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
-        <h4 style={{ fontFamily:S,fontSize:16,color:C.text,margin:0 }}>Chi partecipa</h4>
+        <h4 style={{ fontFamily:S,fontSize:16,color:C.text,margin:0 }}>Chi partecipa ({evento.iscritti})</h4>
         <button onClick={() => setSub("iscritti")} style={{ background:"none",border:"none",color:C.gold,fontSize:12,cursor:"pointer",fontFamily:F }}>Vedi tutti →</button>
       </div>
       <div style={{ display:"flex" }}>
