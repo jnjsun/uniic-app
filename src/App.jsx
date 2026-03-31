@@ -129,16 +129,7 @@ const AccessoBadge = ({ accesso }) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ─── SOCI ─────────────────────────────────────────────────────────────────────
-const VIS = {
-  nome:["ordinario","sostenitore","direttivo"], citta:["ordinario","sostenitore","direttivo"],
-  ruolo_uniic:["ordinario","sostenitore","direttivo"], anno_iscritto:["ordinario","sostenitore","direttivo"],
-  hobby:["ordinario","sostenitore","direttivo"], linkedin:["ordinario","sostenitore","direttivo"],
-  impresa_nome:["ordinario","sostenitore","direttivo"], impresa_sito:["ordinario","sostenitore","direttivo"],
-  email:["sostenitore","direttivo"], nazionalita:["sostenitore","direttivo"],
-  eta:["sostenitore","direttivo"], impresa_settore:["sostenitore","direttivo"],
-  telefono:["direttivo"], piva:["direttivo"], famiglia:["direttivo"], storico:["direttivo"],
-};
-const see = (field, role) => VIS[field]?.includes(role)??false;
+const see = () => true;
 
 // ─── EVENTI ───────────────────────────────────────────────────────────────────
 const EV_TIPI = {
@@ -267,7 +258,7 @@ function SociProfilo({ socio, role, onBack, isAdmin }) {
   const [ruoloCommento, setRuoloCommento] = useState(socio.ruolo_commento || "");
   const [savingRuolo, setSavingRuolo] = useState(false);
   const tcMap = { direttivo:C.red,sostenitore:C.gold,ordinario:C.blue,presidente:C.purple };
-  const subTabs = ["info","impresa","famiglia",...(see("storico",role)?["storico"]:[])];
+  const subTabs = ["info","impresa","famiglia","storico"];
 
   const RUOLI_OPTIONS = [
     { label:"Direttivo", tipo:"direttivo" },
@@ -316,7 +307,7 @@ function SociProfilo({ socio, role, onBack, isAdmin }) {
                   </div>
                 ) : <Tag label={localRuolo} color={tcMap[localTipo]||C.blue} />
               )}
-              {see("eta",role)&&socio.eta&&<Tag label={`${socio.eta} anni`} color={C.muted} />}
+              {socio.eta&&<Tag label={`${socio.eta} anni`} color={C.muted} />}
             </div>
             {isAdmin && (
               <div style={{ marginTop:8 }}>
@@ -357,28 +348,25 @@ function SociProfilo({ socio, role, onBack, isAdmin }) {
         ))}
       </div>
       {sub==="info"&&<div>
-        <FieldRow icon="📧" label="EMAIL" value={socio.email} locked={!see("email",role)} href={see("email",role)&&socio.email?`mailto:${socio.email}`:null} />
-        <FieldRow icon="📞" label="TELEFONO" value={socio.telefono||"—"} locked={!see("telefono",role)} href={see("telefono",role)&&socio.telefono?`tel:${socio.telefono}`:null} />
-        <FieldRow icon="🌐" label="NAZIONALITÀ" value={socio.nazionalita||"—"} locked={!see("nazionalita",role)} />
-        {socio.eta&&<FieldRow icon="🎂" label="ETÀ" value={`${socio.eta} anni`} locked={!see("eta",role)} />}
-        {see("hobby",role)&&socio.hobby?.length>0&&<div style={{ padding:"10px 0" }}>
+        <FieldRow icon="📧" label="EMAIL" value={socio.email} locked={false} href={socio.email?`mailto:${socio.email}`:null} />
+        <FieldRow icon="📞" label="TELEFONO" value={socio.telefono||"—"} locked={false} href={socio.telefono?`tel:${socio.telefono}`:null} />
+        <FieldRow icon="🌐" label="NAZIONALITÀ" value={socio.nazionalita||"—"} locked={false} />
+        {socio.eta&&<FieldRow icon="🎂" label="ETÀ" value={`${socio.eta} anni`} locked={false} />}
+        {socio.hobby?.length>0&&<div style={{ padding:"10px 0" }}>
           <div style={{ fontSize:10,color:C.faint,fontFamily:F,marginBottom:8,letterSpacing:.5 }}>🎨 HOBBY & INTERESSI</div>
           <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>{socio.hobby.map(h=><Tag key={h} label={h} color={socio.colorAccent} />)}</div>
         </div>}
       </div>}
       {sub==="impresa"&&<div>
         <FieldRow icon="🏢" label="RAGIONE SOCIALE" value={socio.impresa_nome||"—"} locked={false} />
-        <FieldRow icon="🏭" label="SETTORE" value={socio.impresa_settore||"—"} locked={!see("impresa_settore",role)} />
-        <FieldRow icon="🧾" label="PARTITA IVA" value={socio.piva||"—"} locked={!see("piva",role)} />
+        <FieldRow icon="🏭" label="SETTORE" value={socio.impresa_settore||"—"} locked={false} />
+        <FieldRow icon="🧾" label="PARTITA IVA" value={socio.piva||"—"} locked={false} />
       </div>}
-      {sub==="famiglia"&&(see("famiglia",role)?<div>
+      {sub==="famiglia"&&<div>
         <FieldRow icon="💍" label="CONIUGE" value={socio.famiglia?.coniuge||(socio.famiglia?.note||"—")} locked={false} />
         <FieldRow icon="👶" label="FIGLI" value={`${socio.famiglia?.figli||0} figli`} locked={false} />
-      </div>:<div style={{ textAlign:"center",padding:40 }}>
-        <div style={{ fontSize:32,marginBottom:12 }}>🔒</div>
-        <div style={{ fontFamily:S,fontSize:18,color:C.text }}>Accesso riservato al Direttivo</div>
-      </div>)}
-      {sub==="storico"&&see("storico",role)&&<div>
+      </div>}
+      {sub==="storico"&&<div>
         {!(socio.storico?.length) ? (
           <div style={{ textAlign:"center",padding:40,color:C.muted,fontFamily:F,fontSize:14 }}>Nessuno storico disponibile</div>
         ) : (<>
@@ -1567,9 +1555,11 @@ function PodcastSection({ role, isAdmin, socioProfilo }) {useEffect(() => {
 function AccountSection({ socioProfilo, session }) {
   const [form, setForm] = useState({
     nome: socioProfilo?.nome || "",
+    cognome: socioProfilo?.cognome || "",
     telefono: socioProfilo?.telefono || "",
     citta: socioProfilo?.citta || "",
     nazionalita: socioProfilo?.nazionalita || "",
+    data_nascita: socioProfilo?.data_nascita || "",
     azienda: socioProfilo?.azienda || "",
     ruolo_azienda: socioProfilo?.ruolo_azienda || "",
     sito_web: socioProfilo?.sito_web || "",
@@ -1577,7 +1567,7 @@ function AccountSection({ socioProfilo, session }) {
     num_figli: socioProfilo?.num_figli ?? "",
     hobby: Array.isArray(socioProfilo?.hobby) ? socioProfilo.hobby.join(", ") : (socioProfilo?.hobby || ""),
     whatsapp: socioProfilo?.whatsapp || "",
-    wechat_id: socioProfilo?.wechat_id || "",
+    wechat: socioProfilo?.wechat || "",
   });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -1600,9 +1590,11 @@ function AccountSection({ socioProfilo, session }) {
     setSaving(true); setMsg("");
     const { error } = await supabase.from('soci').update({
       nome: form.nome,
-      telefono: form.telefono,
-      citta: form.citta,
-      nazionalita: form.nazionalita,
+      cognome: form.cognome || null,
+      telefono: form.telefono || null,
+      citta: form.citta || null,
+      nazionalita: form.nazionalita || null,
+      data_nascita: form.data_nascita || null,
       azienda: form.azienda || null,
       ruolo_azienda: form.ruolo_azienda || null,
       sito_web: form.sito_web || null,
@@ -1610,7 +1602,7 @@ function AccountSection({ socioProfilo, session }) {
       num_figli: form.num_figli === "" ? null : Number(form.num_figli),
       hobby: form.hobby || null,
       whatsapp: form.whatsapp || null,
-      wechat_id: form.wechat_id || null,
+      wechat: form.wechat || null,
     }).eq('email', session.user.email);
     setSaving(false);
     setMsg(error ? "Errore: " + error.message : "Modifiche salvate!");
@@ -1652,13 +1644,15 @@ function AccountSection({ socioProfilo, session }) {
       <Box sx={{ marginBottom:14 }}>
         <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Dati personali</div>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          <div><label style={LABEL}>Nome completo</label><input style={INPUT} value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Nome Cognome" /></div>
+          <div><label style={LABEL}>Nome</label><input style={INPUT} value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Mario" /></div>
+          <div><label style={LABEL}>Cognome</label><input style={INPUT} value={form.cognome} onChange={e => set("cognome", e.target.value)} placeholder="Rossi" /></div>
           <div><label style={LABEL}>Telefono</label><input style={INPUT} value={form.telefono} onChange={e => set("telefono", e.target.value)} placeholder="+39 000 0000000" type="tel" /></div>
           <div><label style={LABEL}>Città</label><input style={INPUT} value={form.citta} onChange={e => set("citta", e.target.value)} placeholder="Milano" /></div>
           <div><label style={LABEL}>Nazionalità</label><input style={INPUT} value={form.nazionalita} onChange={e => set("nazionalita", e.target.value)} placeholder="Italiana" /></div>
+          <div><label style={LABEL}>Data di nascita</label><input style={INPUT} value={form.data_nascita} onChange={e => set("data_nascita", e.target.value)} type="date" /></div>
           <div><label style={LABEL}>Hobby</label><input style={INPUT} value={form.hobby} onChange={e => set("hobby", e.target.value)} placeholder="es. Tennis, Fotografia, Cucina" /></div>
           <div><label style={LABEL}>Numero WhatsApp</label><input style={INPUT} value={form.whatsapp} onChange={e => set("whatsapp", e.target.value)} placeholder="+39 000 0000000" type="tel" /></div>
-          <div><label style={LABEL}>ID WeChat</label><input style={INPUT} value={form.wechat_id} onChange={e => set("wechat_id", e.target.value)} placeholder="il tuo ID WeChat" /></div>
+          <div><label style={LABEL}>ID WeChat</label><input style={INPUT} value={form.wechat} onChange={e => set("wechat", e.target.value)} placeholder="il tuo ID WeChat" /></div>
         </div>
       </Box>
 
@@ -1739,6 +1733,7 @@ const NAV_TABS = [
 function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState("");
 
@@ -1766,9 +1761,12 @@ function LoginScreen({ onLogin }) {
         </div>
         <div style={{ marginBottom:20 }}>
           <div style={{ fontSize:10, color:C.faint, fontFamily:F, letterSpacing:.5, marginBottom:6 }}>PASSWORD</div>
-          <input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" type="password"
-            onKeyDown={e => e.key==="Enter" && login()}
-            style={{ width:"100%", background:C.alt, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", color:C.text, fontSize:13, fontFamily:F, boxSizing:"border-box", outline:"none" }} />
+          <div style={{ position:"relative" }}>
+            <input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" type={showPwd ? "text" : "password"}
+              onKeyDown={e => e.key==="Enter" && login()}
+              style={{ width:"100%", background:C.alt, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 40px 12px 14px", color:C.text, fontSize:13, fontFamily:F, boxSizing:"border-box", outline:"none" }} />
+            <span onClick={() => setShowPwd(v => !v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", cursor:"pointer", fontSize:16, userSelect:"none", color:C.muted }}>{showPwd ? "🙈" : "👁"}</span>
+          </div>
         </div>
         {errore && <div style={{ fontSize:12, color:C.red, fontFamily:F, marginBottom:14, textAlign:"center" }}>{errore}</div>}
         <button onClick={login} disabled={loading} style={{ width:"100%", background:C.red, border:"none", borderRadius:10, padding:"13px", color:"#fff", fontSize:14, fontFamily:F, fontWeight:600, cursor:"pointer" }}>
