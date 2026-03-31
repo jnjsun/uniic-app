@@ -1478,6 +1478,98 @@ function PodcastSection({ role, isAdmin, socioProfilo }) {useEffect(() => {
   </div>);
 }
 
+// ── AccountSection ─────────────────────────────────────────────────────────────
+function AccountSection({ socioProfilo, session }) {
+  const [form, setForm] = useState({
+    nome: socioProfilo?.nome || "",
+    telefono: socioProfilo?.telefono || "",
+    citta: socioProfilo?.citta || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [nuovaPassword, setNuovaPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [savingPwd, setSavingPwd] = useState(false);
+  const [msgPwd, setMsgPwd] = useState("");
+
+  const INPUT = { background:C.alt, border:`1px solid ${C.border}`, borderRadius:10,
+    padding:"11px 14px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box", outline:"none" };
+  const LABEL = { fontSize:10, color:C.muted, fontFamily:F, letterSpacing:.5, marginBottom:5, display:"block", textTransform:"uppercase" };
+
+  const salvaModifiche = async () => {
+    setSaving(true); setMsg("");
+    const { error } = await supabase.from('soci').update({
+      nome: form.nome,
+      telefono: form.telefono,
+      citta: form.citta,
+    }).eq('email', session.user.email);
+    setSaving(false);
+    setMsg(error ? "Errore: " + error.message : "Modifiche salvate!");
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  const cambiaPassword = async () => {
+    if (!nuovaPassword || nuovaPassword.length < 6) { setMsgPwd("Minimo 6 caratteri."); return; }
+    setSavingPwd(true); setMsgPwd("");
+    const { error } = await supabase.auth.updateUser({ password: nuovaPassword });
+    setSavingPwd(false);
+    setMsgPwd(error ? "Errore: " + error.message : "Password aggiornata!");
+    if (!error) { setNuovaPassword(""); setShowPwd(false); }
+    setTimeout(() => setMsgPwd(""), 3000);
+  };
+
+  const iniziali = socioProfilo?.avatar_iniziali || (socioProfilo?.nome ? socioProfilo.nome.split(" ").map(p => p[0]).join("").slice(0,2).toUpperCase() : "?");
+  const colore = socioProfilo?.avatar_colore || C.red;
+
+  return (
+    <div>
+      <SecTitle title="Il mio account" sub="Gestisci il tuo profilo personale" />
+
+      {/* Avatar + info */}
+      <Box sx={{ display:"flex", alignItems:"center", gap:16, marginBottom:16 }}>
+        <Avatar initials={iniziali} size={60} color={colore} />
+        <div>
+          <div style={{ fontFamily:S, fontSize:20, color:C.text, fontWeight:700 }}>{socioProfilo?.nome || "—"}</div>
+          <div style={{ fontFamily:F, fontSize:12, color:C.muted, marginTop:2 }}>{session?.user?.email}</div>
+          {socioProfilo?.tipo && <Tag label={socioProfilo.tipo} color={C.gold} sm />}
+        </div>
+      </Box>
+
+      {/* Modifica profilo */}
+      <Box sx={{ marginBottom:14 }}>
+        <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Modifica profilo</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          <div><label style={LABEL}>Nome completo</label><input style={INPUT} value={form.nome} onChange={e => setForm(f => ({...f, nome: e.target.value}))} placeholder="Nome Cognome" /></div>
+          <div><label style={LABEL}>Telefono</label><input style={INPUT} value={form.telefono} onChange={e => setForm(f => ({...f, telefono: e.target.value}))} placeholder="+39 000 0000000" type="tel" /></div>
+          <div><label style={LABEL}>Città</label><input style={INPUT} value={form.citta} onChange={e => setForm(f => ({...f, citta: e.target.value}))} placeholder="Milano" /></div>
+        </div>
+        {msg && <div style={{ fontFamily:F, fontSize:12, color: msg.startsWith("Errore") ? C.red : C.green, marginTop:10 }}>{msg}</div>}
+        <Btn onClick={salvaModifiche} v="primary" sx={{ width:"100%", marginTop:14 }}>{saving ? "Salvataggio…" : "Salva modifiche"}</Btn>
+      </Box>
+
+      {/* Cambia password */}
+      <Box sx={{ marginBottom:14 }}>
+        <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Sicurezza</div>
+        {!showPwd ? (
+          <Btn onClick={() => setShowPwd(true)} v="secondary" sx={{ width:"100%" }}>🔒 Cambia password</Btn>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <div><label style={LABEL}>Nuova password</label><input style={INPUT} type="password" value={nuovaPassword} onChange={e => setNuovaPassword(e.target.value)} placeholder="••••••••" /></div>
+            {msgPwd && <div style={{ fontFamily:F, fontSize:12, color: msgPwd.startsWith("Errore") ? C.red : C.green }}>{msgPwd}</div>}
+            <div style={{ display:"flex", gap:8 }}>
+              <Btn onClick={() => { setShowPwd(false); setNuovaPassword(""); setMsgPwd(""); }} v="ghost" sx={{ flex:1 }}>Annulla</Btn>
+              <Btn onClick={cambiaPassword} v="gold" sx={{ flex:2 }}>{savingPwd ? "Aggiornamento…" : "Conferma"}</Btn>
+            </div>
+          </div>
+        )}
+      </Box>
+
+      {/* Logout */}
+      <Btn onClick={() => supabase.auth.signOut()} v="danger" sx={{ width:"100%" }}>Esci dall'app</Btn>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // APP ROOT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2066,6 +2158,7 @@ useEffect(() => {
       case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
+      case "account":     return <AccountSection socioProfilo={socioProfilo} session={session} />;
       case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} session={session} /> : null;
       default:            return null;
     }
@@ -2096,7 +2189,7 @@ useEffect(() => {
         </div>
         {showSearch && <SearchModal onClose={() => setShowSearch(false)} onNav={setTab} />}
         <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
-          {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},...(isSuperAdmin?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
+          {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},{id:"account",label:"Account",icon:"👤"},...(isSuperAdmin?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
             <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0" }}>
               <span style={{ fontSize:18 }}>{n.icon}</span>
               <span style={{ fontSize:9, fontFamily:F, color:tab===n.id?C.red:C.muted, fontWeight:tab===n.id?600:400 }}>{n.label}</span>
