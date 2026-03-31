@@ -419,9 +419,19 @@ async function caricaSoci() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // SEZIONE: EVENTI
 // ═══════════════════════════════════════════════════════════════════════════════
-function EvPagamento({ evento, onClose, onDone }) {
+function EvPagamento({ evento, onClose, onDone, socioProfilo }) {
   const [step,setStep]=useState(1); const [ospiti,setOspiti]=useState(0); const [metodo,setMetodo]=useState("carta");
+  const [saving,setSaving]=useState(false); const [nuovaIscrizioni,setNuovaIscrizioni]=useState(null);
   const totale=evento.prezzo*(1+ospiti);
+  async function confermaIscrizione() {
+    setSaving(true);
+    const nuovoIscritto = { nome: socioProfilo?.nome || 'Socio', data: new Date().toISOString() };
+    const lista = [...(evento.iscrizioni || []), nuovoIscritto];
+    await supabase.from('eventi').update({ iscrizioni: lista, iscritti: lista.length }).eq('id', evento.id);
+    setNuovaIscrizioni(lista);
+    setSaving(false);
+    setStep(3);
+  }
   if(step===3) return (<div style={{ textAlign:"center",padding:"16px 0" }}>
     <div style={{ fontSize:48,marginBottom:12 }}>🎉</div>
     <h3 style={{ fontFamily:S,fontSize:22,color:C.text,margin:"0 0 8px" }}>Iscrizione confermata!</h3>
@@ -429,7 +439,7 @@ function EvPagamento({ evento, onClose, onDone }) {
       Riceverai una email con tutti i dettagli.
       {totale>0&&<span style={{ display:"block",color:C.green,marginTop:8,fontWeight:600 }}>✓ Pagamento di € {totale} ricevuto</span>}
     </p>
-    <Btn onClick={()=>{onDone();onClose();}} sx={{ width:"100%" }}>Chiudi →</Btn>
+    <Btn onClick={()=>{onDone(nuovaIscrizioni);onClose();}} sx={{ width:"100%" }}>Chiudi →</Btn>
   </div>);
   return (<div>
     <div style={{ display:"flex",alignItems:"center",gap:4,marginBottom:20 }}>
@@ -468,7 +478,7 @@ function EvPagamento({ evento, onClose, onDone }) {
           <span style={{ fontFamily:S,fontSize:22,color:C.gold,fontWeight:700 }}>€ {totale}</span>
         </div>
       </Box>}
-      <Btn onClick={() => setStep(evento.prezzo===0?3:2)} sx={{ width:"100%" }}>{evento.prezzo===0?"Conferma gratuita →":"Continua al pagamento →"}</Btn>
+      <Btn onClick={() => evento.prezzo===0?confermaIscrizione():setStep(2)} disabled={saving} sx={{ width:"100%" }}>{saving?"Salvataggio…":evento.prezzo===0?"Conferma gratuita →":"Continua al pagamento →"}</Btn>
     </div>}
     {step===2&&<div>
       <h4 style={{ fontFamily:S,fontSize:18,color:C.text,marginTop:0 }}>Pagamento · <span style={{ color:C.gold }}>€ {totale}</span></h4>
@@ -492,7 +502,7 @@ function EvPagamento({ evento, onClose, onDone }) {
       </Box>}
       <div style={{ display:"flex",gap:8 }}>
         <Btn v="ghost" onClick={() => setStep(1)} sx={{ flexShrink:0 }}>←</Btn>
-        <Btn onClick={() => setStep(3)} sx={{ flex:1 }}>{metodo==="carta"?`Paga € ${totale} →`:"Confermo il bonifico →"}</Btn>
+        <Btn onClick={() => confermaIscrizione()} disabled={saving} sx={{ flex:1 }}>{saving?"Salvataggio…":metodo==="carta"?`Paga € ${totale} →`:"Confermo il bonifico →"}</Btn>
       </div>
     </div>}
   </div>);
@@ -598,7 +608,7 @@ function EvSurvey({ evento, onBack }) {
     </div>}
   </div>);
 }
-function EvScheda({ evento, onBack, isAdmin, socioProfilo }) {
+function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornata }) {
   const [sub,setSub]=useState("main"); const [showPag,setShowPag]=useState(false);
   const [iscritto,setIscritto]=useState(evento.iscrizioni.some(i=>i.nome===(socioProfilo?.nome || "Chen Wei")));
   const [calAdded,setCalAdded]=useState(false);
@@ -629,21 +639,23 @@ function EvScheda({ evento, onBack, isAdmin, socioProfilo }) {
       </div>
     </Box>
     {!isAdmin&&<div style={{ marginBottom:12 }}>
-      {showPag?<Box><EvPagamento evento={evento} onClose={() => setShowPag(false)} onDone={() => setIscritto(true)} /></Box>
-      :iscritto?<div>
-        <div style={{ background:C.greenDim,border:`1px solid ${C.green}44`,borderRadius:10,padding:11,marginBottom:8,textAlign:"center" }}>
-          <span style={{ fontSize:13,color:C.green,fontFamily:F,fontWeight:600 }}>✓ Sei iscritto a questo evento</span>
-        </div>
-        <div style={{ display:"flex",gap:8 }}>
-          <Btn v="ghost" onClick={() => setIscritto(false)} sx={{ flex:1,fontSize:11 }}>Disdici</Btn>
-          <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓ In calendario":"📆 Aggiungi al cal."}</Btn>
-        </div>
-      </div>
-      :sold?<Btn v="gold" sx={{ width:"100%" }}>⏳ Lista d'attesa</Btn>
-      :<div style={{ display:"flex",gap:8 }}>
-        <Btn onClick={() => setShowPag(true)} sx={{ flex:2 }}>{evento.prezzo===0?"Iscriviti gratuitamente →":`Iscriviti · € ${evento.prezzo} →`}</Btn>
-        <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓":"📆 Cal."}</Btn>
-      </div>}
+      {showPag
+        ? <Box><EvPagamento evento={evento} socioProfilo={socioProfilo} onClose={() => setShowPag(false)} onDone={(nuovaIscrizioni) => { setIscritto(true); const evAgg={...evento,iscrizioni:nuovaIscrizioni,iscritti:nuovaIscrizioni.length}; onIscrizioneAggiornata?.(evAgg); }} /></Box>
+        : iscritto
+          ? <div>
+              <Btn disabled sx={{ width:"100%",marginBottom:8,background:C.greenDim,color:C.green,border:`1px solid ${C.green}44` }}>Iscritto ✓</Btn>
+              <div style={{ display:"flex",gap:8 }}>
+                <Btn v="ghost" onClick={() => setIscritto(false)} sx={{ flex:1,fontSize:11 }}>Disdici</Btn>
+                <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓ In calendario":"📆 Aggiungi al cal."}</Btn>
+              </div>
+            </div>
+          : sold
+            ? <Btn disabled sx={{ width:"100%",background:`${C.red}15`,color:C.red,border:`1px solid ${C.red}33` }}>Posti esauriti</Btn>
+            : <div style={{ display:"flex",gap:8 }}>
+                <Btn onClick={() => setShowPag(true)} sx={{ flex:2 }}>{evento.prezzo===0?"Iscriviti gratuitamente →":`Iscriviti · € ${evento.prezzo} →`}</Btn>
+                <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓":"📆 Cal."}</Btn>
+              </div>
+      }
     </div>}
     {isAdmin&&<div style={{ display:"flex",gap:8,marginBottom:12,flexWrap:"wrap" }}>
       <Btn v="secondary" onClick={() => setSub("iscritti")} sx={{ flex:1,fontSize:11 }}>👥 Iscritti ({evento.iscritti})</Btn>
@@ -689,6 +701,11 @@ useEffect(() => {
       ...e,
       desc: e.desc_evento,
       dataObj: e.data,
+      iscrizioni: e.iscrizioni || [],
+      iscritti: (e.iscrizioni || []).length,
+      waitlist: e.waitlist || [],
+      programma: e.programma || [],
+      survey: e.survey || { inviato: false, risposte: 0, media: 0 },
     }));
     setEventi(mappati);
     setLoadingEv(false);
@@ -701,7 +718,7 @@ useEffect(() => {
   const sorted=useMemo(()=>[...eventi].sort((a,b)=>new Date(a.data)-new Date(b.data)),[eventi]);
   const prossimi=sorted.filter(e=>new Date(e.data)>=oggi); const passati=sorted.filter(e=>new Date(e.data)<oggi);
   const filtra=list=>filtro==="tutti"?list:list.filter(e=>e.tipo===filtro);
-  if(selected) return <EvScheda evento={selected} onBack={() => setSelected(null)} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
+  if(selected) return <EvScheda evento={selected} onBack={() => setSelected(null)} isAdmin={isAdmin} socioProfilo={socioProfilo} onIscrizioneAggiornata={(evAgg) => { setEventi(ev => ev.map(e => e.id===evAgg.id?evAgg:e)); setSelected(evAgg); }} />;
   const ECard=({ev}) => {
     const tp=EV_TIPI[ev.tipo]; const sold=ev.iscritti>=ev.posti; const pct=ev.iscritti/ev.posti;
     const isc=ev.iscrizioni.some(i=>i.nome===(socioProfilo?.nome || "Chen Wei"));
@@ -715,8 +732,11 @@ useEffect(() => {
         <div>📅 {ev.dataLabel} · {ev.orario}</div><div>📍 {ev.luogo.split(",")[0]}</div>
       </div>
       <Bar val={ev.iscritti} max={ev.posti} color={sold?C.red:pct>.8?C.gold:C.green} />
-      <div style={{ display:"flex",justifyContent:"space-between",marginTop:5 }}>
-        <span style={{ fontSize:11,color:C.faint,fontFamily:F }}>{sold?`SOLD OUT · ${ev.waitlist.length} in attesa`:`${ev.posti-ev.iscritti}/${ev.posti} liberi`}</span>
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6 }}>
+        {sold
+          ? <span style={{ fontSize:11,fontWeight:700,color:C.red,fontFamily:F,background:`${C.red}15`,padding:"3px 8px",borderRadius:6 }}>Posti esauriti</span>
+          : <span style={{ fontSize:11,fontWeight:600,color:pct>.8?C.gold:C.green,fontFamily:F,background:pct>.8?`${C.gold}18`:`${C.green}18`,padding:"3px 8px",borderRadius:6 }}>{ev.posti-ev.iscritti} posti rimasti</span>
+        }
         <span style={{ fontFamily:S,fontSize:16,color:ev.prezzo===0?C.green:C.gold,fontWeight:700 }}>{ev.prezzo===0?"Gratuito":`€ ${ev.prezzo}`}</span>
       </div>
     </Box>);
