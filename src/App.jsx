@@ -1,25 +1,5 @@
-import { useState, useMemo, useEffect, useRef, Component } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { supabase, subscribeToPush } from './supabase.js'
-
-// ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
-class ErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error, info) { console.error("ErrorBoundary:", error, info); }
-  render() {
-    if (this.state.hasError) return (
-      <div style={{ minHeight:"100vh", background:"#0F0D0D", display:"flex", justifyContent:"center", alignItems:"center" }}>
-        <div style={{ textAlign:"center", padding:32 }}>
-          <div style={{ fontSize:72, marginBottom:20 }}>⚠️</div>
-          <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:26, color:"#F5EFE6", margin:"0 0 10px", fontWeight:700 }}>Qualcosa è andato storto</h2>
-          <p style={{ color:"#9A8F84", fontFamily:"'Montserrat',sans-serif", fontSize:13, margin:"0 0 28px", lineHeight:1.6 }}>Si è verificato un errore imprevisto nell'applicazione.</p>
-          <button onClick={() => window.location.reload()} style={{ background:"#C8102E", color:"#fff", border:"none", borderRadius:10, padding:"12px 28px", fontFamily:"'Montserrat',sans-serif", fontSize:13, fontWeight:600, cursor:"pointer" }}>Ricarica app</button>
-        </div>
-      </div>
-    );
-    return this.props.children;
-  }
-}
 
 // ─── TEMA ─────────────────────────────────────────────────────────────────────
 const C = {
@@ -1916,75 +1896,98 @@ function AdminSection({ socioProfilo, session }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SEZIONE: PROFILO UTENTE
+// MODALE RICERCA GLOBALE
 // ═══════════════════════════════════════════════════════════════════════════════
-function ProfiloSection({ socioProfilo, session, onLogout, onBack, setSocioProfilo }) {
-  const [nome, setNome] = useState(socioProfilo?.nome || "");
-  const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState("");
-  const [showPwd, setShowPwd] = useState(false);
-  const [pwd, setPwd] = useState("");
-  const [pwdMsg, setPwdMsg] = useState("");
-  const tipoMap = { ordinario:[C.blue,"Ordinario"], sostenitore:[C.gold,"Sostenitore"], direttivo:[C.red,"Direttivo"] };
-  const [tipoColor, tipoLabel] = tipoMap[socioProfilo?.tipo] || tipoMap.ordinario;
+function SearchModal({ onClose, onNav }) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState({ soci:[], eventi:[], articoli:[], convenzioni:[] });
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef(null);
 
-  const salvaNome = async () => {
-    if (!nome.trim()) return;
-    setSaving(true); setSaveMsg("");
-    const { error } = await supabase.from('soci').update({ nome: nome.trim() }).eq('email', session.user.email);
-    setSaving(false);
-    if (error) { setSaveMsg("Errore nel salvataggio."); return; }
-    setSocioProfilo(prev => ({ ...prev, nome: nome.trim() }));
-    setSaveMsg("Modifiche salvate!");
-    setTimeout(() => setSaveMsg(""), 3000);
-  };
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
-  const cambiaPassword = async () => {
-    if (!pwd.trim()) return;
-    const { error } = await supabase.auth.updateUser({ password: pwd });
-    if (error) { setPwdMsg("Errore: " + error.message); return; }
-    setPwdMsg("Password aggiornata!");
-    setPwd("");
-    setTimeout(() => { setPwdMsg(""); setShowPwd(false); }, 3000);
-  };
+  useEffect(() => {
+    if (!q.trim()) { setResults({ soci:[], eventi:[], articoli:[], convenzioni:[] }); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      const term = `%${q.trim()}%`;
+      const [r1, r2, r3, r4] = await Promise.all([
+        supabase.from('soci').select('id,nome').ilike('nome', term).limit(5),
+        supabase.from('eventi').select('id,titolo').ilike('titolo', term).limit(5),
+        supabase.from('articoli').select('id,titolo').ilike('titolo', term).limit(5),
+        supabase.from('convenzioni').select('id,nome').ilike('nome', term).limit(5),
+      ]);
+      setResults({
+        soci: r1.data || [],
+        eventi: r2.data || [],
+        articoli: r3.data || [],
+        convenzioni: r4.data || [],
+      });
+      setLoading(false);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const total = results.soci.length + results.eventi.length + results.articoli.length + results.convenzioni.length;
+  const cats = [
+    { key:"soci",        label:"Soci",        icon:"👥", tab:"soci",        field:"nome" },
+    { key:"eventi",      label:"Eventi",      icon:"📅", tab:"eventi",      field:"titolo" },
+    { key:"articoli",    label:"Articoli",    icon:"📰", tab:"newsletter",  field:"titolo" },
+    { key:"convenzioni", label:"Convenzioni", icon:"🤝", tab:"convenzioni", field:"nome" },
+  ];
 
   return (
-    <div>
-      <BackBtn onClick={onBack} label="← Indietro" />
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"16px 0 28px", background:`linear-gradient(135deg,${tipoColor}18,transparent)`, borderRadius:16, marginBottom:20, border:`1px solid ${tipoColor}22` }}>
-        <Avatar initials={socioProfilo?.avatar_iniziali || "?"} size={80} color={socioProfilo?.avatar_colore || C.red} />
-        <h2 style={{ fontFamily:S, fontSize:22, color:C.text, margin:"14px 0 6px", fontWeight:700 }}>{socioProfilo?.nome || "—"}</h2>
-        <Tag label={tipoLabel} color={tipoColor} />
-      </div>
-      <Box sx={{ marginBottom:14 }}>
-        <FieldRow icon="📧" label="EMAIL" value={session?.user?.email} />
-        <FieldRow icon="🏅" label="TIPO SOCIO" value={tipoLabel} />
-      </Box>
-      <Box sx={{ marginBottom:14 }}>
-        <div style={{ fontSize:10, color:C.faint, fontFamily:F, letterSpacing:.5, marginBottom:8 }}>MODIFICA NOME</div>
-        <input value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome completo"
-          style={{ width:"100%", background:C.alt, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", color:C.text, fontSize:13, fontFamily:F, boxSizing:"border-box", outline:"none", marginBottom:10 }} />
-        <Btn onClick={salvaNome} sx={{ width:"100%" }} v={saving ? "ghost" : "primary"}>
-          {saving ? "Salvataggio…" : "Salva modifiche"}
-        </Btn>
-        {saveMsg && <div style={{ fontSize:12, color:saveMsg.startsWith("Errore")?C.red:C.green, fontFamily:F, marginTop:8, textAlign:"center" }}>{saveMsg}</div>}
-      </Box>
-      <Box sx={{ marginBottom:14 }}>
-        {!showPwd
-          ? <Btn v="secondary" onClick={() => setShowPwd(true)} sx={{ width:"100%" }}>🔑 Cambia password</Btn>
-          : <div>
-              <div style={{ fontSize:10, color:C.faint, fontFamily:F, letterSpacing:.5, marginBottom:8 }}>NUOVA PASSWORD</div>
-              <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} placeholder="Nuova password..."
-                style={{ width:"100%", background:C.alt, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", color:C.text, fontSize:13, fontFamily:F, boxSizing:"border-box", outline:"none", marginBottom:10 }} />
-              <div style={{ display:"flex", gap:8 }}>
-                <Btn v="ghost" onClick={() => { setShowPwd(false); setPwd(""); setPwdMsg(""); }} sx={{ flex:1 }}>Annulla</Btn>
-                <Btn onClick={cambiaPassword} sx={{ flex:2 }}>Aggiorna password</Btn>
-              </div>
-              {pwdMsg && <div style={{ fontSize:12, color:pwdMsg.startsWith("Errore")?C.red:C.green, fontFamily:F, marginTop:8, textAlign:"center" }}>{pwdMsg}</div>}
+    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.82)", zIndex:2000, display:"flex", alignItems:"flex-start", justifyContent:"center", paddingTop:56 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width:358, maxWidth:"92vw", background:C.bg, border:`1px solid ${C.gold}55`, borderRadius:16, overflow:"hidden", boxShadow:`0 20px 60px rgba(0,0,0,.8), 0 0 0 1px ${C.gold}22` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:`1px solid ${C.border}` }}>
+          <span style={{ fontSize:15, color:C.gold }}>🔍</span>
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Cerca soci, eventi, articoli, convenzioni…"
+            style={{ flex:1, background:"none", border:"none", outline:"none", color:C.text, fontFamily:F, fontSize:13, caretColor:C.gold }}
+          />
+          {q && (
+            <button onClick={() => setQ("")} style={{ background:"none", border:"none", color:C.muted, fontSize:18, cursor:"pointer", padding:0, lineHeight:1 }}>×</button>
+          )}
+        </div>
+        <div style={{ maxHeight:"65vh", overflowY:"auto" }}>
+          {!q.trim() && (
+            <div style={{ textAlign:"center", padding:"32px 16px", color:C.faint, fontFamily:F, fontSize:12 }}>
+              Inizia a digitare per cercare…
             </div>
-        }
-      </Box>
-      <Btn v="danger" onClick={onLogout} sx={{ width:"100%" }}>Esci dall'account</Btn>
+          )}
+          {q.trim() && loading && (
+            <div style={{ textAlign:"center", padding:"24px", color:C.muted, fontFamily:F, fontSize:12 }}>Ricerca in corso…</div>
+          )}
+          {q.trim() && !loading && total === 0 && (
+            <div style={{ textAlign:"center", padding:"24px", color:C.faint, fontFamily:F, fontSize:12 }}>Nessun risultato per «{q}»</div>
+          )}
+          {q.trim() && !loading && cats.map(cat => {
+            const items = results[cat.key];
+            if (!items.length) return null;
+            return (
+              <div key={cat.key}>
+                <div style={{ padding:"10px 16px 6px", fontSize:10, color:C.gold, fontFamily:F, fontWeight:600, letterSpacing:1.2, textTransform:"uppercase", borderTop:`1px solid ${C.border}` }}>
+                  {cat.icon} {cat.label}
+                </div>
+                {items.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => { onNav(cat.tab); onClose(); }}
+                    style={{ width:"100%", textAlign:"left", background:"none", border:"none", padding:"10px 16px 10px 28px", color:C.text, fontFamily:F, fontSize:13, cursor:"pointer", display:"block", borderBottom:`1px solid ${C.border}22`, transition:"background .15s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = C.goldDim}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >
+                    {item[cat.field]}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1997,6 +2000,7 @@ export default function App() {
   const isAdmin = role === "direttivo";
   const isSuperAdmin = session?.user?.email === "jj@suncapital.it";
   const [socioProfilo, setSocioProfilo] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
 
 useEffect(() => {
   if (!session) return;
@@ -2034,8 +2038,6 @@ useEffect(() => {
 
   if (!session) return <LoginScreen onLogin={() => {}} />;
 
-  const logout = async () => { await supabase.auth.signOut(); };
-
   const renderSection = () => {
     switch(tab) {
       case "home":        return <HomeSection onNav={setTab} role={role} socioProfilo={socioProfilo} />;
@@ -2045,46 +2047,44 @@ useEffect(() => {
       case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} session={session} /> : null;
-      case "profilo":     return <ProfiloSection socioProfilo={socioProfilo} session={session} onLogout={logout} onBack={() => setTab("home")} setSocioProfilo={setSocioProfilo} />;
       default:            return null;
     }
   };
 
+  const logout = async () => { await supabase.auth.signOut(); };
+
   return (
-    <ErrorBoundary>
-      <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#080605" }}>
-        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet" />
-        <div style={{ width:390, minHeight:"100vh", maxHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", boxShadow:"0 0 80px rgba(0,0,0,.85)", overflow:"hidden", position:"relative" }}>
-          <div style={{ background:C.surface, padding:"10px 18px 8px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <div style={{ width:32, height:32, background:C.red, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🐉</div>
-              <div>
-                <div style={{ fontFamily:S, fontSize:16, color:C.text, fontWeight:700, lineHeight:1 }}>UNIIC</div>
-                <div style={{ fontSize:8, color:C.gold, fontFamily:F, letterSpacing:1 }}>中意商联</div>
-              </div>
+    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#080605" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet" />
+      <div style={{ width:390, minHeight:"100vh", maxHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", boxShadow:"0 0 80px rgba(0,0,0,.85)", overflow:"hidden", position:"relative" }}>
+        <div style={{ background:C.surface, padding:"10px 18px 8px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:32, height:32, background:C.red, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🐉</div>
+            <div>
+              <div style={{ fontFamily:S, fontSize:16, color:C.text, fontWeight:700, lineHeight:1 }}>UNIIC</div>
+              <div style={{ fontSize:8, color:C.gold, fontFamily:F, letterSpacing:1 }}>中意商联</div>
             </div>
-            <button onClick={() => setTab("profilo")} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:8, padding:0 }}>
-              <Avatar initials={socioProfilo?.avatar_iniziali || "?"} size={32} color={socioProfilo?.avatar_colore || C.red} />
-              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                <div style={{ width:7, height:7, background:C.green, borderRadius:"50%" }} />
-                <span style={{ fontSize:10, color:C.muted, fontFamily:F }}>{socioProfilo?.nome?.split(" ")[0] || "Profilo"}</span>
-              </div>
-            </button>
           </div>
-          <div style={{ flex:1, overflowY:"auto", padding:"18px 16px 80px" }}>
-            {renderSection()}
-          </div>
-          <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
-            {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},...(isSuperAdmin?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
-              <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0" }}>
-                <span style={{ fontSize:18 }}>{n.icon}</span>
-                <span style={{ fontSize:9, fontFamily:F, color:tab===n.id?C.red:C.muted, fontWeight:tab===n.id?600:400 }}>{n.label}</span>
-                {tab===n.id && <div style={{ width:14, height:2, background:C.red, borderRadius:2 }} />}
-              </button>
-            ))}
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <button onClick={() => setShowSearch(true)} style={{ background:"none", border:`1px solid ${C.gold}44`, borderRadius:8, padding:"4px 9px", color:C.gold, fontFamily:F, fontSize:14, cursor:"pointer", lineHeight:1 }} title="Cerca">🔍</button>
+            <div style={{ width:8, height:8, background:C.green, borderRadius:"50%" }} />
+            <button onClick={logout} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"4px 10px", color:C.muted, fontFamily:F, fontSize:11, cursor:"pointer" }}>Esci</button>
           </div>
         </div>
+        <div style={{ flex:1, overflowY:"auto", padding:"18px 16px 80px" }}>
+          {renderSection()}
+        </div>
+        {showSearch && <SearchModal onClose={() => setShowSearch(false)} onNav={setTab} />}
+        <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
+          {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},...(isSuperAdmin?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
+            <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0" }}>
+              <span style={{ fontSize:18 }}>{n.icon}</span>
+              <span style={{ fontSize:9, fontFamily:F, color:tab===n.id?C.red:C.muted, fontWeight:tab===n.id?600:400 }}>{n.label}</span>
+              {tab===n.id && <div style={{ width:14, height:2, background:C.red, borderRadius:2 }} />}
+            </button>
+          ))}
+        </div>
       </div>
-    </ErrorBoundary>
+    </div>
   );
 }
