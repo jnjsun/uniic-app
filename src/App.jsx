@@ -517,30 +517,19 @@ function EvIscritti({ evento, onBack, isAdmin }) {
   const tc={direttivo:C.red,sostenitore:C.gold,ordinario:C.blue};
   return (<div>
     <BackBtn onClick={onBack} label="← Torna all'evento" />
-    <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-      <div>
-        <h3 style={{ fontFamily:S,fontSize:22,color:C.text,margin:0 }}>Partecipanti</h3>
-        <p style={{ color:C.muted,fontSize:12,fontFamily:F,margin:"4px 0 0" }}>{evento.iscritti} iscritti · {evento.posti-evento.iscritti} posti liberi</p>
-      </div>
-      {isAdmin&&<Btn v="gold" onClick={() => alert("Export in preparazione…")} sx={{ fontSize:11,padding:"8px 12px" }}>↓ Export</Btn>}
+    <div style={{ marginBottom:12 }}>
+      <h3 style={{ fontFamily:S,fontSize:22,color:C.text,margin:0 }}>Partecipanti ({evento.iscritti})</h3>
     </div>
     <Bar val={evento.iscritti} max={evento.posti} color={evento.iscritti/evento.posti>.9?C.red:evento.iscritti/evento.posti>.7?C.gold:C.green} />
     <div style={{ height:10 }} />
     {lista.map((p,i) => (
-      <Box key={p.id} sx={{ marginBottom:8 }}>
+      <Box key={p.id||i} sx={{ marginBottom:8 }}>
         <div style={{ display:"flex",alignItems:"center",gap:12 }}>
           <div style={{ width:36,height:36,borderRadius:"50%",background:`${tc[p.tipo]||C.blue}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0 }}>👤</div>
           <div style={{ flex:1 }}>
-            <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
-              <span style={{ fontFamily:S,fontSize:16,color:C.text,fontWeight:700 }}>{p.nome}</span>
-              {p.ospiti>0&&<Tag label={`+${p.ospiti}`} color={C.purple} sm />}
-            </div>
-            <div style={{ display:"flex",gap:6,marginTop:4,flexWrap:"wrap" }}>
-              <Tag label={p.tipo} color={tc[p.tipo]||C.blue} sm />
-              <Tag label={p.stato} color={p.stato==="confermato"?C.green:C.gold} sm />
-            </div>
+            <span style={{ fontFamily:S,fontSize:16,color:C.text,fontWeight:700 }}>{p.nome}</span>
+            {p.tipo&&<div style={{ marginTop:4 }}><Tag label={p.tipo} color={tc[p.tipo]||C.blue} sm /></div>}
           </div>
-          {isAdmin&&evento.prezzo>0&&<div style={{ fontSize:12,color:p.pagato?C.green:C.gold,fontFamily:F,fontWeight:600 }}>{p.pagato?`✓ €${p.importo}`:"⏳ n.p."}</div>}
         </div>
       </Box>
     ))}
@@ -548,35 +537,18 @@ function EvIscritti({ evento, onBack, isAdmin }) {
       <h4 style={{ fontFamily:S,fontSize:17,color:C.gold,margin:"0 0 10px" }}>Lista d'attesa ({waitlist.length})</h4>
       {waitlist.map((nome,i) => (
         <Box key={nome} sx={{ marginBottom:8,borderColor:`${C.gold}33` }}>
-          <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-            <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-              <span style={{ fontSize:14,color:C.gold,fontFamily:F,fontWeight:700 }}>#{i+1}</span>
-              <span style={{ fontFamily:S,fontSize:16,color:C.text }}>{nome}</span>
-            </div>
-            {isAdmin&&<Btn v="gold" onClick={() => setWaitlist(w=>w.filter(n=>n!==nome))} sx={{ fontSize:10,padding:"6px 10px" }}>Promuovi →</Btn>}
+          <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+            <span style={{ fontSize:14,color:C.gold,fontFamily:F,fontWeight:700 }}>#{i+1}</span>
+            <span style={{ fontFamily:S,fontSize:16,color:C.text }}>{nome}</span>
           </div>
         </Box>
       ))}
     </div>}
-    {evento.tavoli&&isAdmin&&<div style={{ marginTop:20 }}>
-      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 12px" }}>🪑 Tavoli</h4>
-      {evento.tavoli.map((t,i) => (
-        <Box key={i} sx={{ marginBottom:10,borderLeft:`3px solid ${C.gold}` }}>
-          <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6 }}>
-            <span style={{ fontFamily:S,fontSize:16,color:C.text,fontWeight:700 }}>{t.nome}</span>
-            <span style={{ fontSize:12,color:C.muted,fontFamily:F }}>{t.posti} posti · {t.liberi} liberi</span>
-          </div>
-          <Bar val={t.posti-t.liberi} max={t.posti} color={C.gold} />
-        </Box>
-      ))}
-    </div>}
-    {isAdmin&&<Btn v="secondary" onClick={() => alert("Comunicazione inviata!")} sx={{ width:"100%",marginTop:14 }}>📨 Invia comunicazione</Btn>}
   </div>);
 }
 function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornata }) {
   const [sub,setSub]=useState("main"); const [saving,setSaving]=useState(false);
   const [iscritto,setIscritto]=useState(evento.iscrizioni.some(i=>i.nome===(socioProfilo?.nome||'Socio')));
-  const [calAdded,setCalAdded]=useState(false);
   const t=EV_TIPI[evento.tipo]; const sold=evento.iscritti>=evento.posti; const pct=Math.round(evento.iscritti/evento.posti*100);
   async function handleIscrizione() {
     setSaving(true);
@@ -615,23 +587,6 @@ function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornat
         <span style={{ fontFamily:S,fontSize:17,color:evento.prezzo===0?C.green:C.gold,fontWeight:700 }}>{evento.prezzo===0?"Gratuito":`€ ${evento.prezzo}`}</span>
       </div>
     </Box>
-    {!isAdmin&&<div style={{ marginBottom:12 }}>
-      {iscritto
-        ? <div>
-            <Btn disabled sx={{ width:"100%",marginBottom:8,background:C.greenDim,color:C.green,border:`1px solid ${C.green}44` }}>Iscritto ✓</Btn>
-            <div style={{ display:"flex",gap:8 }}>
-              <Btn v="ghost" onClick={() => setIscritto(false)} sx={{ flex:1,fontSize:11 }}>Disdici</Btn>
-              <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓ In calendario":"📆 Aggiungi al cal."}</Btn>
-            </div>
-          </div>
-        : sold
-          ? <Btn disabled sx={{ width:"100%",background:`${C.red}15`,color:C.red,border:`1px solid ${C.red}33` }}>Posti esauriti</Btn>
-          : <div style={{ display:"flex",gap:8 }}>
-              <Btn onClick={handleIscrizione} disabled={saving} sx={{ flex:2 }}>{saving?"…":`Iscriviti${evento.prezzo>0?` · € ${evento.prezzo}`:""} →`}</Btn>
-              <Btn v="ghost" onClick={() => setCalAdded(true)} sx={{ flex:1,fontSize:11 }}>{calAdded?"✓":"📆 Cal."}</Btn>
-            </div>
-      }
-    </div>}
     {evento.iscrizioni.length>0&&<Box sx={{ marginBottom:10 }}>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
         <h4 style={{ fontFamily:S,fontSize:16,color:C.text,margin:0 }}>Chi partecipa ({evento.iscritti})</h4>
@@ -644,6 +599,14 @@ function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornat
         {evento.iscritti>5&&<div style={{ width:34,height:34,borderRadius:"50%",background:C.alt,border:`2px solid ${C.bg}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.muted,marginLeft:-10,fontFamily:F }}>+{evento.iscritti-5}</div>}
       </div>
     </Box>}
+    {!isAdmin&&<div style={{ marginBottom:14 }}>
+      {iscritto
+        ? <Btn disabled sx={{ width:"100%",background:C.greenDim,color:C.green,border:`1px solid ${C.green}44`,fontSize:16,padding:"14px" }}>Iscritto ✓</Btn>
+        : sold
+          ? <Btn disabled sx={{ width:"100%",background:`${C.faint}30`,color:C.muted,border:`1px solid ${C.border}`,fontSize:16,padding:"14px" }}>Posti esauriti</Btn>
+          : <Btn onClick={handleIscrizione} disabled={saving} sx={{ width:"100%",fontSize:16,padding:"14px" }}>{saving?"…":"Iscriviti"}</Btn>
+      }
+    </div>}
     <Box sx={{ marginBottom:10 }}>
       <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 8px" }}>Descrizione</h4>
       <p style={{ color:C.muted,fontSize:13,fontFamily:F,lineHeight:1.7,margin:0 }}>{evento.desc}</p>
