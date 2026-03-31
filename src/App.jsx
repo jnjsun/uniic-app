@@ -1437,12 +1437,17 @@ function AccountSection({ socioProfilo, session }) {
     impresa_sito: socioProfilo?.impresa_sito || "",
     stato_civile: socioProfilo?.stato_civile || "",
     figli: socioProfilo?.famiglia?.figli ?? "",
-    bio: socioProfilo?.bio || "",
+    hobby: Array.isArray(socioProfilo?.hobby) ? socioProfilo.hobby.join(", ") : (socioProfilo?.hobby || ""),
   });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [passwordAttuale, setPasswordAttuale] = useState("");
   const [nuovaPassword, setNuovaPassword] = useState("");
+  const [confermaPassword, setConfermaPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
+  const [showPwdAttuale, setShowPwdAttuale] = useState(false);
+  const [showPwdNuova, setShowPwdNuova] = useState(false);
+  const [showPwdConferma, setShowPwdConferma] = useState(false);
   const [savingPwd, setSavingPwd] = useState(false);
   const [msgPwd, setMsgPwd] = useState("");
 
@@ -1464,7 +1469,7 @@ function AccountSection({ socioProfilo, session }) {
       impresa_sito: form.impresa_sito,
       stato_civile: form.stato_civile,
       famiglia: { ...(socioProfilo?.famiglia || {}), figli: form.figli === "" ? null : Number(form.figli) },
-      bio: form.bio,
+      hobby: form.hobby || null,
     }).eq('email', session.user.email);
     setSaving(false);
     setMsg(error ? "Errore: " + error.message : "Modifiche salvate!");
@@ -1472,12 +1477,16 @@ function AccountSection({ socioProfilo, session }) {
   };
 
   const cambiaPassword = async () => {
-    if (!nuovaPassword || nuovaPassword.length < 6) { setMsgPwd("Minimo 6 caratteri."); return; }
+    if (!passwordAttuale) { setMsgPwd("Inserisci la password attuale."); return; }
+    if (!nuovaPassword || nuovaPassword.length < 6) { setMsgPwd("La nuova password deve avere almeno 6 caratteri."); return; }
+    if (nuovaPassword !== confermaPassword) { setMsgPwd("Le due nuove password non coincidono."); return; }
     setSavingPwd(true); setMsgPwd("");
+    const { error: errLogin } = await supabase.auth.signInWithPassword({ email: session.user.email, password: passwordAttuale });
+    if (errLogin) { setSavingPwd(false); setMsgPwd("Password attuale non corretta."); return; }
     const { error } = await supabase.auth.updateUser({ password: nuovaPassword });
     setSavingPwd(false);
     setMsgPwd(error ? "Errore: " + error.message : "Password aggiornata!");
-    if (!error) { setNuovaPassword(""); setShowPwd(false); }
+    if (!error) { setPasswordAttuale(""); setNuovaPassword(""); setConfermaPassword(""); setShowPwd(false); }
     setTimeout(() => setMsgPwd(""), 3000);
   };
 
@@ -1507,7 +1516,7 @@ function AccountSection({ socioProfilo, session }) {
           <div><label style={LABEL}>Città</label><input style={INPUT} value={form.citta} onChange={e => set("citta", e.target.value)} placeholder="Milano" /></div>
           <div><label style={LABEL}>Nazionalità</label><input style={INPUT} value={form.nazionalita} onChange={e => set("nazionalita", e.target.value)} placeholder="Italiana" /></div>
           <div><label style={LABEL}>Data di nascita</label><input style={INPUT} value={form.data_nascita} onChange={e => set("data_nascita", e.target.value)} type="date" /></div>
-          <div><label style={LABEL}>Bio / Descrizione</label><textarea style={{ ...INPUT, resize:"vertical", minHeight:72 }} value={form.bio} onChange={e => set("bio", e.target.value)} placeholder="Breve presentazione…" /></div>
+          <div><label style={LABEL}>Hobby</label><input style={INPUT} value={form.hobby} onChange={e => set("hobby", e.target.value)} placeholder="es. Tennis, Fotografia, Cucina" /></div>
         </div>
       </Box>
 
@@ -1539,10 +1548,30 @@ function AccountSection({ socioProfilo, session }) {
           <Btn onClick={() => setShowPwd(true)} v="secondary" sx={{ width:"100%" }}>🔒 Cambia password</Btn>
         ) : (
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            <div><label style={LABEL}>Nuova password</label><input style={INPUT} type="password" value={nuovaPassword} onChange={e => setNuovaPassword(e.target.value)} placeholder="••••••••" /></div>
-            {msgPwd && <div style={{ fontFamily:F, fontSize:12, color: msgPwd.startsWith("Errore") ? C.red : C.green }}>{msgPwd}</div>}
+            <div>
+              <label style={LABEL}>Password attuale</label>
+              <div style={{ position:"relative" }}>
+                <input style={{ ...INPUT, paddingRight:40 }} type={showPwdAttuale ? "text" : "password"} value={passwordAttuale} onChange={e => setPasswordAttuale(e.target.value)} placeholder="••••••••" />
+                <span onClick={() => setShowPwdAttuale(v => !v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", cursor:"pointer", fontSize:16, userSelect:"none" }}>{showPwdAttuale ? "🙈" : "👁"}</span>
+              </div>
+            </div>
+            <div>
+              <label style={LABEL}>Nuova password</label>
+              <div style={{ position:"relative" }}>
+                <input style={{ ...INPUT, paddingRight:40 }} type={showPwdNuova ? "text" : "password"} value={nuovaPassword} onChange={e => setNuovaPassword(e.target.value)} placeholder="••••••••" />
+                <span onClick={() => setShowPwdNuova(v => !v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", cursor:"pointer", fontSize:16, userSelect:"none" }}>{showPwdNuova ? "🙈" : "👁"}</span>
+              </div>
+            </div>
+            <div>
+              <label style={LABEL}>Conferma nuova password</label>
+              <div style={{ position:"relative" }}>
+                <input style={{ ...INPUT, paddingRight:40 }} type={showPwdConferma ? "text" : "password"} value={confermaPassword} onChange={e => setConfermaPassword(e.target.value)} placeholder="••••••••" />
+                <span onClick={() => setShowPwdConferma(v => !v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", cursor:"pointer", fontSize:16, userSelect:"none" }}>{showPwdConferma ? "🙈" : "👁"}</span>
+              </div>
+            </div>
+            {msgPwd && <div style={{ fontFamily:F, fontSize:12, color: msgPwd.startsWith("Errore") || msgPwd.includes("non") ? C.red : C.green }}>{msgPwd}</div>}
             <div style={{ display:"flex", gap:8 }}>
-              <Btn onClick={() => { setShowPwd(false); setNuovaPassword(""); setMsgPwd(""); }} v="ghost" sx={{ flex:1 }}>Annulla</Btn>
+              <Btn onClick={() => { setShowPwd(false); setPasswordAttuale(""); setNuovaPassword(""); setConfermaPassword(""); setMsgPwd(""); }} v="ghost" sx={{ flex:1 }}>Annulla</Btn>
               <Btn onClick={cambiaPassword} v="gold" sx={{ flex:2 }}>{savingPwd ? "Aggiornamento…" : "Conferma"}</Btn>
             </div>
           </div>
