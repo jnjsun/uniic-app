@@ -337,7 +337,7 @@ function SociProfilo({ socio, role, onBack, onChat }) {
     </div>
   );
 }
-function SociSection({ role }) {
+function SociSection({ role, openId, onOpenHandled }) {
   const [search, setSearch] = useState("");
   const [sociDB, setSociDB] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -360,6 +360,11 @@ async function caricaSoci() {
   const [showFilters, setShowFilters] = useState(false);
   const [selected, setSelected] = useState(null);
   const [chatWith, setChatWith] = useState(null);
+  useEffect(() => {
+    if (!openId || !sociDB.length) return;
+    const s = sociDB.find(x => x.id === openId);
+    if (s) { setSelected(s); onOpenHandled?.(); }
+  }, [sociDB, openId]);
   const tcMap = { direttivo:C.red,sostenitore:C.gold,ordinario:C.blue };
   const filtered = useMemo(() => sociDB.filter(s => {
     const q=search.toLowerCase();
@@ -689,7 +694,7 @@ function EvScheda({ evento, onBack, isAdmin, socioProfilo, onIscrizioneAggiornat
     </Box>}
   </div>);
 }
-function EventiSection({ isAdmin, socioProfilo }) {
+function EventiSection({ isAdmin, socioProfilo, openId, onOpenHandled }) {
   const [eventiDB, setEventiDB] = useState([]);
 const [loadingEv, setLoadingEv] = useState(true);
 
@@ -714,6 +719,11 @@ useEffect(() => {
 }, []);
   const [eventi,setEventi]=useState([]); const [filtro,setFiltro]=useState("tutti");
   const [selected,setSelected]=useState(null); const [showForm,setShowForm]=useState(false);
+  useEffect(() => {
+    if (!openId || !eventi.length) return;
+    const ev = eventi.find(x => x.id === openId);
+    if (ev) { setSelected(ev); onOpenHandled?.(); }
+  }, [eventi, openId]);
   const oggi=new Date("2026-03-27");
   const sorted=useMemo(()=>[...eventi].sort((a,b)=>new Date(a.data)-new Date(b.data)),[eventi]);
   const prossimi=sorted.filter(e=>new Date(e.data)>=oggi); const passati=sorted.filter(e=>new Date(e.data)<oggi);
@@ -878,7 +888,7 @@ function ConvScheda({ conv, role, preferiti, onToggleFav, onBack }) {
     <Btn v={isFav?"danger":"secondary"} onClick={() => onToggleFav(conv.id)} sx={{ width:"100%" }}>{isFav?"❤️ Rimuovi dai preferiti":"🤍 Salva nei preferiti"}</Btn>
   </div>);
 }
-function ConvenzioniSection({ role, isAdmin }) {const [convDB, setConvDB] = useState([]);
+function ConvenzioniSection({ role, isAdmin, openId, onOpenHandled }) {const [convDB, setConvDB] = useState([]);
 useEffect(() => {
   async function carica() {
     const { data, error } = await supabase.from('convenzioni').select('*');
@@ -891,6 +901,11 @@ useEffect(() => {
   const [preferiti,setPreferiti]=useState([3,5]); const [filtroCateg,setFiltroCateg]=useState("Tutte");
   const [showFav,setShowFav]=useState(false); const [showFilters,setShowFilters]=useState(false);
   const [selected,setSelected]=useState(null); const [adminView,setAdminView]=useState("lista");
+  useEffect(() => {
+    if (!openId || !convenzioni.length) return;
+    const c = convenzioni.find(x => x.id === openId);
+    if (c) { setSelected(c); onOpenHandled?.(); }
+  }, [convenzioni, openId]);
   const [proponiForm,setProponiForm]=useState(false); const [proponiInviato,setProponiInviato]=useState(false);
   const [propForm,setPropForm]=useState({nome:"",categoria:"F&B",desc:"",contatto:""});
   const toggleFav=id=>setPreferiti(fs=>fs.includes(id)?fs.filter(f=>f!==id):[...fs,id]);
@@ -1075,7 +1090,7 @@ function NLLettura({ art, role, salvati, onToggleSalva, onBack, isAdmin, setArti
     </Box>}
   </div>);
 }
-function NewsletterSection({ role, isAdmin, socioProfilo }) {
+function NewsletterSection({ role, isAdmin, socioProfilo, openId, onOpenHandled }) {
 
   const [articoli,setArticoli]=useState([]); const [notifiche,setNotifiche]=useState([]);
   const [selected,setSelected]=useState(null); const [filterCat,setFilterCat]=useState("tutti");
@@ -1098,6 +1113,11 @@ function NewsletterSection({ role, isAdmin, socioProfilo }) {
   carica();
 }, []);
   const toggleSalva=id=>setSalvati(ss=>ss.includes(id)?ss.filter(s=>s!==id):[...ss,id]);
+  useEffect(() => {
+    if (!openId || !articoli.length) return;
+    const a = articoli.find(x => x.id === openId);
+    if (a) { setSelected(a); onOpenHandled?.(); }
+  }, [articoli, openId]);
   const pubbl=articoli.filter(a=>a.pubblicato);
   const visible=useMemo(()=>{
     let list=pubbl;
@@ -2087,7 +2107,7 @@ function SearchModal({ onClose, onNav }) {
                 {items.map(item => (
                   <button
                     key={item.id}
-                    onClick={() => { onNav(cat.tab); onClose(); }}
+                    onClick={() => { onNav(cat.tab, item.id); onClose(); }}
                     style={{ width:"100%", textAlign:"left", background:"none", border:"none", padding:"10px 16px 10px 28px", color:C.text, fontFamily:F, fontSize:13, cursor:"pointer", display:"block", borderBottom:`1px solid ${C.border}22`, transition:"background .15s" }}
                     onMouseEnter={e => e.currentTarget.style.background = C.goldDim}
                     onMouseLeave={e => e.currentTarget.style.background = "none"}
@@ -2113,6 +2133,7 @@ export default function App() {
   const isSuperAdmin = session?.user?.email === "jj@suncapital.it";
   const [socioProfilo, setSocioProfilo] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [deepLink, setDeepLink] = useState(null);
 
 useEffect(() => {
   if (!session) return;
@@ -2153,10 +2174,10 @@ useEffect(() => {
   const renderSection = () => {
     switch(tab) {
       case "home":        return <HomeSection onNav={setTab} role={role} socioProfilo={socioProfilo} />;
-      case "soci":        return <SociSection role={role} />;
-      case "convenzioni": return <ConvenzioniSection role={role} isAdmin={isAdmin} />;
-      case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} />;
-      case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
+      case "soci":        return <SociSection role={role} openId={deepLink?.tab==="soci" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
+      case "convenzioni": return <ConvenzioniSection role={role} isAdmin={isAdmin} openId={deepLink?.tab==="convenzioni" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
+      case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} openId={deepLink?.tab==="eventi" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
+      case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} openId={deepLink?.tab==="newsletter" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "account":     return <AccountSection socioProfilo={socioProfilo} session={session} />;
       case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} session={session} /> : null;
@@ -2187,7 +2208,7 @@ useEffect(() => {
         <div style={{ flex:1, overflowY:"auto", padding:"18px 16px 80px" }}>
           {renderSection()}
         </div>
-        {showSearch && <SearchModal onClose={() => setShowSearch(false)} onNav={setTab} />}
+        {showSearch && <SearchModal onClose={() => setShowSearch(false)} onNav={(tab, id) => { setTab(tab); if (id) setDeepLink({ tab, id }); }} />}
         <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
           {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},{id:"account",label:"Account",icon:"👤"},...(isSuperAdmin?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
             <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0" }}>
