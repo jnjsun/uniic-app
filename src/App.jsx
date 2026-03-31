@@ -270,10 +270,10 @@ function SociProfilo({ socio, role, onBack, onChat }) {
           <div style={{ flex:1 }}>
             <h2 style={{ fontFamily:S,fontSize:24,color:C.text,margin:"0 0 6px",lineHeight:1.1 }}>{socio.nome}</h2>
             <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-              <Tag label={socio.ruolo_uniic} color={tcMap[socio.tipo]||C.blue} />
-              {see("eta",role)&&<Tag label={`${socio.eta} anni`} color={C.muted} />}
+              {socio.ruolo_uniic&&<Tag label={socio.ruolo_uniic} color={tcMap[socio.tipo]||C.blue} />}
+              {see("eta",role)&&socio.eta&&<Tag label={`${socio.eta} anni`} color={C.muted} />}
             </div>
-            <div style={{ fontSize:12,color:C.muted,fontFamily:F,marginTop:8 }}>📍 {socio.citta} · Socio dal {socio.anno_iscritto}</div>
+            <div style={{ fontSize:12,color:C.muted,fontFamily:F,marginTop:8 }}>📍 {socio.citta||"—"} · Socio dal {socio.anno_iscritto||"—"}</div>
           </div>
         </div>
         <div style={{ display:"flex",gap:8,marginTop:14 }}>
@@ -291,18 +291,18 @@ function SociProfilo({ socio, role, onBack, onChat }) {
       </div>
       {sub==="info"&&<div>
         <FieldRow icon="📧" label="EMAIL" value={socio.email} locked={!see("email",role)} />
-        <FieldRow icon="📞" label="TELEFONO" value={socio.telefono} locked={!see("telefono",role)} />
-        <FieldRow icon="🌐" label="NAZIONALITÀ" value={socio.nazionalita} locked={!see("nazionalita",role)} />
-        <FieldRow icon="🎂" label="ETÀ" value={`${socio.eta} anni`} locked={!see("eta",role)} />
-        {see("hobby",role)&&<div style={{ padding:"10px 0" }}>
+        <FieldRow icon="📞" label="TELEFONO" value={socio.telefono||"—"} locked={!see("telefono",role)} />
+        <FieldRow icon="🌐" label="NAZIONALITÀ" value={socio.nazionalita||"—"} locked={!see("nazionalita",role)} />
+        {socio.eta&&<FieldRow icon="🎂" label="ETÀ" value={`${socio.eta} anni`} locked={!see("eta",role)} />}
+        {see("hobby",role)&&socio.hobby?.length>0&&<div style={{ padding:"10px 0" }}>
           <div style={{ fontSize:10,color:C.faint,fontFamily:F,marginBottom:8,letterSpacing:.5 }}>🎨 HOBBY & INTERESSI</div>
           <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>{socio.hobby.map(h=><Tag key={h} label={h} color={socio.colorAccent} />)}</div>
         </div>}
       </div>}
       {sub==="impresa"&&<div>
-        <FieldRow icon="🏢" label="RAGIONE SOCIALE" value={socio.impresa_nome} locked={false} />
-        <FieldRow icon="🏭" label="SETTORE" value={socio.impresa_settore} locked={!see("impresa_settore",role)} />
-        <FieldRow icon="🧾" label="PARTITA IVA" value={socio.piva} locked={!see("piva",role)} />
+        <FieldRow icon="🏢" label="RAGIONE SOCIALE" value={socio.impresa_nome||"—"} locked={false} />
+        <FieldRow icon="🏭" label="SETTORE" value={socio.impresa_settore||"—"} locked={!see("impresa_settore",role)} />
+        <FieldRow icon="🧾" label="PARTITA IVA" value={socio.piva||"—"} locked={!see("piva",role)} />
       </div>}
       {sub==="famiglia"&&(see("famiglia",role)?<div>
         <FieldRow icon="💍" label="CONIUGE" value={socio.famiglia?.coniuge||(socio.famiglia?.note||"—")} locked={false} />
@@ -315,10 +315,10 @@ function SociProfilo({ socio, role, onBack, onChat }) {
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
           <span style={{ color:C.muted,fontFamily:F,fontSize:12 }}>Totale versato</span>
           <span style={{ fontFamily:S,fontSize:22,color:C.gold,fontWeight:700 }}>
-            € {socio.storico.reduce((s,r)=>s+parseInt(r.quota.replace(/[^0-9]/g,"")),0).toLocaleString()}
+            € {(socio.storico||[]).reduce((s,r)=>s+parseInt((r.quota||"0").replace(/[^0-9]/g,"")),0).toLocaleString()}
           </span>
         </div>
-        {[...socio.storico].reverse().map((r,i) => (
+        {[...(socio.storico||[])].reverse().map((r,i) => (
           <div key={i} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.border}` }}>
             <div style={{ display:"flex",gap:12,alignItems:"center" }}>
               <div style={{ width:36,height:36,borderRadius:8,background:r.stato==="Pagato"?C.greenDim:C.redDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>{r.stato==="Pagato"?"✓":"⏳"}</div>
@@ -1467,6 +1467,14 @@ function AccountSection({ socioProfilo, session }) {
     nome: socioProfilo?.nome || "",
     telefono: socioProfilo?.telefono || "",
     citta: socioProfilo?.citta || "",
+    nazionalita: socioProfilo?.nazionalita || "",
+    data_nascita: socioProfilo?.data_nascita || "",
+    impresa_nome: socioProfilo?.impresa_nome || "",
+    impresa_ruolo: socioProfilo?.impresa_ruolo || "",
+    impresa_sito: socioProfilo?.impresa_sito || "",
+    stato_civile: socioProfilo?.stato_civile || "",
+    figli: socioProfilo?.famiglia?.figli ?? "",
+    bio: socioProfilo?.bio || "",
   });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -1478,6 +1486,7 @@ function AccountSection({ socioProfilo, session }) {
   const INPUT = { background:C.alt, border:`1px solid ${C.border}`, borderRadius:10,
     padding:"11px 14px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box", outline:"none" };
   const LABEL = { fontSize:10, color:C.muted, fontFamily:F, letterSpacing:.5, marginBottom:5, display:"block", textTransform:"uppercase" };
+  const set = (k, v) => setForm(f => ({...f, [k]: v}));
 
   const salvaModifiche = async () => {
     setSaving(true); setMsg("");
@@ -1485,6 +1494,14 @@ function AccountSection({ socioProfilo, session }) {
       nome: form.nome,
       telefono: form.telefono,
       citta: form.citta,
+      nazionalita: form.nazionalita,
+      data_nascita: form.data_nascita || null,
+      impresa_nome: form.impresa_nome,
+      impresa_ruolo: form.impresa_ruolo,
+      impresa_sito: form.impresa_sito,
+      stato_civile: form.stato_civile,
+      famiglia: { ...(socioProfilo?.famiglia || {}), figli: form.figli === "" ? null : Number(form.figli) },
+      bio: form.bio,
     }).eq('email', session.user.email);
     setSaving(false);
     setMsg(error ? "Errore: " + error.message : "Modifiche salvate!");
@@ -1520,11 +1537,33 @@ function AccountSection({ socioProfilo, session }) {
 
       {/* Modifica profilo */}
       <Box sx={{ marginBottom:14 }}>
-        <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Modifica profilo</div>
+        <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Dati personali</div>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          <div><label style={LABEL}>Nome completo</label><input style={INPUT} value={form.nome} onChange={e => setForm(f => ({...f, nome: e.target.value}))} placeholder="Nome Cognome" /></div>
-          <div><label style={LABEL}>Telefono</label><input style={INPUT} value={form.telefono} onChange={e => setForm(f => ({...f, telefono: e.target.value}))} placeholder="+39 000 0000000" type="tel" /></div>
-          <div><label style={LABEL}>Città</label><input style={INPUT} value={form.citta} onChange={e => setForm(f => ({...f, citta: e.target.value}))} placeholder="Milano" /></div>
+          <div><label style={LABEL}>Nome completo</label><input style={INPUT} value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Nome Cognome" /></div>
+          <div><label style={LABEL}>Telefono</label><input style={INPUT} value={form.telefono} onChange={e => set("telefono", e.target.value)} placeholder="+39 000 0000000" type="tel" /></div>
+          <div><label style={LABEL}>Città</label><input style={INPUT} value={form.citta} onChange={e => set("citta", e.target.value)} placeholder="Milano" /></div>
+          <div><label style={LABEL}>Nazionalità</label><input style={INPUT} value={form.nazionalita} onChange={e => set("nazionalita", e.target.value)} placeholder="Italiana" /></div>
+          <div><label style={LABEL}>Data di nascita</label><input style={INPUT} value={form.data_nascita} onChange={e => set("data_nascita", e.target.value)} type="date" /></div>
+          <div><label style={LABEL}>Bio / Descrizione</label><textarea style={{ ...INPUT, resize:"vertical", minHeight:72 }} value={form.bio} onChange={e => set("bio", e.target.value)} placeholder="Breve presentazione…" /></div>
+        </div>
+      </Box>
+
+      {/* Settore / Impresa */}
+      <Box sx={{ marginBottom:14 }}>
+        <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Settore / Impresa</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          <div><label style={LABEL}>Nome azienda</label><input style={INPUT} value={form.impresa_nome} onChange={e => set("impresa_nome", e.target.value)} placeholder="Acme S.r.l." /></div>
+          <div><label style={LABEL}>Ruolo</label><input style={INPUT} value={form.impresa_ruolo} onChange={e => set("impresa_ruolo", e.target.value)} placeholder="CEO, Responsabile, …" /></div>
+          <div><label style={LABEL}>Sito web</label><input style={INPUT} value={form.impresa_sito} onChange={e => set("impresa_sito", e.target.value)} placeholder="https://…" type="url" /></div>
+        </div>
+      </Box>
+
+      {/* Famiglia */}
+      <Box sx={{ marginBottom:14 }}>
+        <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Famiglia</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          <div><label style={LABEL}>Stato civile</label><input style={INPUT} value={form.stato_civile} onChange={e => set("stato_civile", e.target.value)} placeholder="Celibe, Coniugato, …" /></div>
+          <div><label style={LABEL}>Numero figli</label><input style={INPUT} value={form.figli} onChange={e => set("figli", e.target.value)} placeholder="0" type="number" min="0" /></div>
         </div>
         {msg && <div style={{ fontFamily:F, fontSize:12, color: msg.startsWith("Errore") ? C.red : C.green, marginTop:10 }}>{msg}</div>}
         <Btn onClick={salvaModifiche} v="primary" sx={{ width:"100%", marginTop:14 }}>{saving ? "Salvataggio…" : "Salva modifiche"}</Btn>
