@@ -327,13 +327,13 @@ function SociProfilo({ socio, role, onBack, isAdmin }) {
           </div>
         </div>
         <div style={{ display:"flex",gap:8,marginTop:14,flexWrap:"wrap" }}>
-          {socio.whatsapp && (
+          {socio.whatsapp?.trim() && (
             <a href={`https://wa.me/${String(socio.whatsapp).replace(/\D/g,"")}`} style={{ flex:1,textDecoration:"none" }}>
               <Btn sx={{ width:"100%" }}>💬 WhatsApp</Btn>
             </a>
           )}
-          {socio.wechat_id && (
-            <a href={`weixin://dl/chat?${socio.wechat_id}`} style={{ flex:1,textDecoration:"none" }}>
+          {socio.wechat?.trim() && (
+            <a href={`weixin://dl/chat?${socio.wechat}`} style={{ flex:1,textDecoration:"none" }}>
               <Btn v="green" sx={{ width:"100%" }}>🟢 WeChat</Btn>
             </a>
           )}
@@ -469,7 +469,7 @@ async function caricaSoci() {
           </div>
           <div style={{ display:"flex",gap:8,marginTop:10 }}>
             {s.whatsapp && <a href={`https://wa.me/${String(s.whatsapp).replace(/\D/g,"")}`} onClick={e=>e.stopPropagation()} style={{ flex:1,textDecoration:"none" }}><button style={{ width:"100%",background:C.redDim,border:`1px solid ${C.red}33`,color:C.red,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>💬 WA</button></a>}
-            {s.wechat_id && <a href={`weixin://dl/chat?${s.wechat_id}`} onClick={e=>e.stopPropagation()} style={{ flex:1,textDecoration:"none" }}><button style={{ width:"100%",background:C.greenDim,border:`1px solid ${C.green}33`,color:C.green,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>🟢 WeChat</button></a>}
+            {s.wechat?.trim() && <a href={`weixin://dl/chat?${s.wechat}`} onClick={e=>e.stopPropagation()} style={{ flex:1,textDecoration:"none" }}><button style={{ width:"100%",background:C.greenDim,border:`1px solid ${C.green}33`,color:C.green,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>🟢 WeChat</button></a>}
             <button onClick={e=>{e.stopPropagation();setSelected(s);}} style={{ flex:2,background:C.alt,border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>Vedi profilo →</button>
           </div>
         </Box>
@@ -1555,7 +1555,7 @@ function PodcastSection({ role, isAdmin, socioProfilo }) {useEffect(() => {
 function AccountSection({ socioProfilo, session, onRefresh }) {
   const FORM_VUOTO = {
     nome: "", cognome: "", telefono: "", citta: "", nazionalita: "",
-    data_nascita: "", azienda: "", ruolo_azienda: "", sito_web: "",
+    data_nascita: "", settore: "", azienda: "", ruolo_azienda: "", sito_web: "",
     stato_civile: "", num_figli: "", hobby: "", whatsapp: "", wechat: "",
   };
   const fromRecord = (r) => ({
@@ -1565,6 +1565,7 @@ function AccountSection({ socioProfilo, session, onRefresh }) {
     citta: r.citta || "",
     nazionalita: r.nazionalita || "",
     data_nascita: r.data_nascita || "",
+    settore: r.settore || "",
     azienda: r.azienda || "",
     ruolo_azienda: r.ruolo_azienda || "",
     sito_web: r.sito_web || "",
@@ -1616,8 +1617,9 @@ function AccountSection({ socioProfilo, session, onRefresh }) {
       ruolo_azienda: form.ruolo_azienda || null,
       sito_web: form.sito_web || null,
       stato_civile: form.stato_civile || null,
+      settore: form.settore || null,
       num_figli: form.num_figli === "" ? null : Number(form.num_figli),
-      hobby: form.hobby || null,
+      hobby: form.hobby ? form.hobby.split(",").map(s => s.trim()).filter(Boolean) : [],
       whatsapp: form.whatsapp || null,
       wechat: form.wechat || null,
     }).eq('email', session.user.email);
@@ -1684,6 +1686,7 @@ function AccountSection({ socioProfilo, session, onRefresh }) {
       <Box sx={{ marginBottom:14 }}>
         <div style={{ fontFamily:F, fontSize:11, color:C.gold, fontWeight:600, letterSpacing:.5, marginBottom:14, textTransform:"uppercase" }}>Settore / Impresa</div>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          <div><label style={LABEL}>Settore</label><input style={INPUT} value={form.settore} onChange={e => set("settore", e.target.value)} placeholder="es. Import/Export, Finance, Tech…" /></div>
           <div><label style={LABEL}>Nome azienda</label><input style={INPUT} value={form.azienda} onChange={e => set("azienda", e.target.value)} placeholder="Acme S.r.l." /></div>
           <div><label style={LABEL}>Ruolo</label><input style={INPUT} value={form.ruolo_azienda} onChange={e => set("ruolo_azienda", e.target.value)} placeholder="CEO, Responsabile, …" /></div>
           <div><label style={LABEL}>Sito web</label><input style={INPUT} value={form.sito_web} onChange={e => set("sito_web", e.target.value)} placeholder="https://…" type="url" /></div>
