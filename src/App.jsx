@@ -1552,24 +1552,41 @@ function PodcastSection({ role, isAdmin, socioProfilo }) {useEffect(() => {
 }
 
 // ── AccountSection ─────────────────────────────────────────────────────────────
-function AccountSection({ socioProfilo, session }) {
-  const [form, setForm] = useState({
-    nome: socioProfilo?.nome || "",
-    cognome: socioProfilo?.cognome || "",
-    telefono: socioProfilo?.telefono || "",
-    citta: socioProfilo?.citta || "",
-    nazionalita: socioProfilo?.nazionalita || "",
-    data_nascita: socioProfilo?.data_nascita || "",
-    azienda: socioProfilo?.azienda || "",
-    ruolo_azienda: socioProfilo?.ruolo_azienda || "",
-    sito_web: socioProfilo?.sito_web || "",
-    stato_civile: socioProfilo?.stato_civile || "",
-    num_figli: socioProfilo?.num_figli ?? "",
-    hobby: Array.isArray(socioProfilo?.hobby) ? socioProfilo.hobby.join(", ") : (socioProfilo?.hobby || ""),
-    whatsapp: socioProfilo?.whatsapp || "",
-    wechat: socioProfilo?.wechat || "",
+function AccountSection({ socioProfilo, session, onRefresh }) {
+  const FORM_VUOTO = {
+    nome: "", cognome: "", telefono: "", citta: "", nazionalita: "",
+    data_nascita: "", azienda: "", ruolo_azienda: "", sito_web: "",
+    stato_civile: "", num_figli: "", hobby: "", whatsapp: "", wechat: "",
+  };
+  const fromRecord = (r) => ({
+    nome: r.nome || "",
+    cognome: r.cognome || "",
+    telefono: r.telefono || "",
+    citta: r.citta || "",
+    nazionalita: r.nazionalita || "",
+    data_nascita: r.data_nascita || "",
+    azienda: r.azienda || "",
+    ruolo_azienda: r.ruolo_azienda || "",
+    sito_web: r.sito_web || "",
+    stato_civile: r.stato_civile || "",
+    num_figli: r.num_figli ?? "",
+    hobby: Array.isArray(r.hobby) ? r.hobby.join(", ") : (r.hobby || ""),
+    whatsapp: r.whatsapp || "",
+    wechat: r.wechat || "",
   });
+  const [form, setForm] = useState(socioProfilo ? fromRecord(socioProfilo) : FORM_VUOTO);
+  const [loading, setLoading] = useState(!socioProfilo);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function carica() {
+      setLoading(true);
+      const { data } = await supabase.from('soci').select('*').eq('email', session.user.email).single();
+      if (data) setForm(fromRecord(data));
+      setLoading(false);
+    }
+    carica();
+  }, [session.user.email]);
   const [msg, setMsg] = useState("");
   const [passwordAttuale, setPasswordAttuale] = useState("");
   const [nuovaPassword, setNuovaPassword] = useState("");
@@ -1605,7 +1622,8 @@ function AccountSection({ socioProfilo, session }) {
       wechat: form.wechat || null,
     }).eq('email', session.user.email);
     setSaving(false);
-    setMsg(error ? "Errore: " + error.message : "Modifiche salvate!");
+    if (!error) { setMsg("Modifiche salvate!"); onRefresh?.(); }
+    else setMsg("Errore: " + error.message);
     setTimeout(() => setMsg(""), 3000);
   };
 
@@ -1625,6 +1643,12 @@ function AccountSection({ socioProfilo, session }) {
 
   const iniziali = socioProfilo?.avatar_iniziali || (socioProfilo?.nome ? socioProfilo.nome.split(" ").map(p => p[0]).join("").slice(0,2).toUpperCase() : "?");
   const colore = socioProfilo?.avatar_colore || C.red;
+
+  if (loading) return (
+    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", height:200 }}>
+      <div style={{ fontFamily:F, fontSize:13, color:C.muted }}>Caricamento profilo…</div>
+    </div>
+  );
 
   return (
     <div>
@@ -2267,9 +2291,8 @@ export default function App() {
   const [showSearch, setShowSearch] = useState(false);
   const [deepLink, setDeepLink] = useState(null);
 
-useEffect(() => {
-  if (!session) return;
-  async function caricaProfilo() {
+  const caricaProfilo = async () => {
+    if (!session) return;
     const { data } = await supabase
       .from('soci')
       .select('*')
@@ -2278,10 +2301,13 @@ useEffect(() => {
     if (data) {
       setSocioProfilo(data);
       setRole(data.tipo || 'ordinario');
-      subscribeToPush(session.user.id).catch(() => {});
     }
-  }
+  };
+
+useEffect(() => {
+  if (!session) return;
   caricaProfilo();
+  subscribeToPush(session.user.id).catch(() => {});
 }, [session]);
 
   useEffect(() => {
@@ -2311,7 +2337,7 @@ useEffect(() => {
       case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} openId={deepLink?.tab==="eventi" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
       case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} openId={deepLink?.tab==="newsletter" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
-      case "account":     return <AccountSection socioProfilo={socioProfilo} session={session} />;
+      case "account":     return <AccountSection socioProfilo={socioProfilo} session={session} onRefresh={caricaProfilo} />;
       case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} session={session} /> : null;
       default:            return null;
     }
