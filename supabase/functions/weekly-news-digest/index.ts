@@ -217,9 +217,9 @@ serve(async (req) => {
       console.log(`"${keyword}": ${articles.length} articoli`)
     }
 
-    // 2. Deduplica e seleziona top 10
+    // 2. Deduplica e seleziona top 20
     const unique = deduplicateArticles(allArticles)
-    const top = unique.slice(0, 10)
+    const top = unique.slice(0, 20)
     console.log(`Articoli unici: ${unique.length}, selezionati: ${top.length}`)
 
     if (top.length === 0) {
@@ -247,8 +247,8 @@ serve(async (req) => {
         url_originale: article.url,
         categoria: classifyCategory(article.title, article.description),
         settimana_rif: settimanaRif,
-        importanza: Math.max(1, 5 - i), // top articoli = importanza più alta
-        pubblicato: true,
+        importanza: Math.max(1, Math.ceil(5 - (i * 4) / (top.length - 1 || 1))), // scala da 5 a 1
+        pubblicato: false,
       })
     }
 

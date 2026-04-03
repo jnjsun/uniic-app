@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { supabase, subscribeToPush } from './supabase.js'
+import * as XLSX from 'xlsx'
 
 // ─── TEMA ─────────────────────────────────────────────────────────────────────
 const C = {
@@ -2514,6 +2515,9 @@ function AdminSection({ socioProfilo, session, onPendingCount }) {
   const [pushTitle, setPushTitle] = useState("");
   const [pushBody, setPushBody] = useState("");
   const [pushLoading, setPushLoading] = useState(false);
+  const [digestView, setDigestView] = useState("bozze"); // "bozze" | "tutti"
+  const [bozze, setBozze] = useState([]);
+  const [bozzeLoading, setBozzeLoading] = useState(false);
   // Richieste iscrizione state
   const [richieste, setRichieste] = useState([]);
   const [richiesteLoading, setRichiesteLoading] = useState(false);
@@ -2633,6 +2637,85 @@ function AdminSection({ socioProfilo, session, onPendingCount }) {
     } finally {
       setPushLoading(false);
     }
+  };
+
+  // ── Bozze digest ──
+  const caricaBozze = async () => {
+    setBozzeLoading(true);
+    const { data, error } = await supabase.from('news_digest').select('*').eq('pubblicato', false).order('importanza', { ascending: false });
+    if (!error && data) setBozze(data);
+    setBozzeLoading(false);
+  };
+
+  useEffect(() => { if (sottoTab === "digest" && digestView === "bozze") caricaBozze(); }, [sottoTab, digestView]);
+
+  const approvaBozza = async (id) => {
+    await supabase.from('news_digest').update({ pubblicato: true }).eq('id', id);
+    setBozze(b => b.filter(x => x.id !== id));
+  };
+  const scartaBozza = async (id) => {
+    if (!window.confirm("Sei sicuro di voler scartare questo articolo?")) return;
+    await supabase.from('news_digest').delete().eq('id', id);
+    setBozze(b => b.filter(x => x.id !== id));
+  };
+  const approvaTutte = async () => {
+    if (!window.confirm(`Approvare tutte le ${bozze.length} bozze?`)) return;
+    const ids = bozze.map(b => b.id);
+    await supabase.from('news_digest').update({ pubblicato: true }).in('id', ids);
+    setBozze([]);
+  };
+  const esportaBozzeExcel = () => {
+    const rows = bozze.map(b => ({
+      titolo_it: b.titolo_it, titolo_cn: b.titolo_cn, riassunto_it: b.riassunto_it, riassunto_cn: b.riassunto_cn,
+      fonte: b.fonte, url_originale: b.url_originale, categoria: b.categoria, importanza: b.importanza
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bozze Digest");
+    XLSX.writeFile(wb, "bozze_digest.xlsx");
+  };
+
+  const renderBozze = () => {
+    if (bozzeLoading) return <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento bozze...</div>;
+    return (
+      <div>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
+          <div style={{ fontFamily:F, fontSize:13, color:C.gold, fontWeight:600 }}>{bozze.length} bozze in attesa di approvazione</div>
+          <div style={{ display:"flex", gap:8 }}>
+            {bozze.length > 0 && <>
+              <button onClick={esportaBozzeExcel} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"6px 12px", color:C.muted, fontFamily:F, fontSize:11, cursor:"pointer" }}>Scarica Excel</button>
+              <button onClick={approvaTutte} style={{ background:C.green, border:"none", borderRadius:8, padding:"6px 12px", color:"#fff", fontFamily:F, fontSize:11, fontWeight:600, cursor:"pointer" }}>Approva tutti</button>
+            </>}
+          </div>
+        </div>
+        {bozze.length === 0
+          ? <div style={{ textAlign:"center", color:C.faint, fontFamily:F, fontSize:12, paddingTop:20 }}>Nessuna bozza in attesa.</div>
+          : bozze.map(b => {
+              const cat = DIGEST_CAT[b.categoria] || { label: b.categoria, color: C.muted, icon: "📰" };
+              return (
+                <div key={b.id} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:14, marginBottom:10 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontFamily:S, fontSize:14, color:C.text, marginBottom:4 }}>{b.titolo_it}</div>
+                      <div style={{ fontFamily:F, fontSize:12, color:C.muted, marginBottom:6 }}>{b.titolo_cn}</div>
+                      <div style={{ fontFamily:F, fontSize:11, color:C.faint, marginBottom:8 }}>{(b.riassunto_it || "").slice(0, 120)}{(b.riassunto_it || "").length > 120 ? "..." : ""}</div>
+                      <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                        <span style={{ background:`${cat.color}22`, color:cat.color, borderRadius:6, padding:"2px 8px", fontSize:10, fontWeight:600 }}>{cat.icon} {cat.label}</span>
+                        <span style={{ fontFamily:F, fontSize:10, color:C.faint }}>{b.fonte}</span>
+                        <span style={{ fontFamily:F, fontSize:10, color:C.gold }}>{"★".repeat(b.importanza)}{"☆".repeat(5 - b.importanza)}</span>
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                      <button onClick={() => approvaBozza(b.id)} style={{ background:C.green, border:"none", borderRadius:8, padding:"6px 12px", color:"#fff", fontFamily:F, fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>✓ Approva</button>
+                      <button onClick={() => scartaBozza(b.id)} style={{ background:"none", border:`1px solid ${C.red}44`, borderRadius:8, padding:"6px 12px", color:C.red, fontFamily:F, fontSize:11, cursor:"pointer", whiteSpace:"nowrap" }}>✗ Scarta</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+        }
+      </div>
+    );
   };
 
   const CONF = {
@@ -2841,8 +2924,20 @@ function AdminSection({ socioProfilo, session, onPendingCount }) {
         ))}
       </div>
 
+      {sottoTab === "digest" && (
+        <div style={{ display:"flex", gap:6, marginBottom:14 }}>
+          {["bozze","tutti"].map(v => (
+            <button key={v} onClick={() => setDigestView(v)} style={{ flex:1, padding:"7px 0", borderRadius:8, border:`1px solid ${digestView===v?C.gold:C.border}`, background:digestView===v?`${C.gold}18`:C.surface, color:digestView===v?C.gold:C.muted, fontFamily:F, fontSize:11, fontWeight:digestView===v?600:400, cursor:"pointer" }}>
+              {v === "bozze" ? `Bozze${bozze.length > 0 ? ` (${bozze.length})` : ""}` : "Tutti"}
+            </button>
+          ))}
+        </div>
+      )}
+
       {sottoTab === "richieste"
         ? renderRichieste()
+        : sottoTab === "digest" && digestView === "bozze"
+          ? renderBozze()
         : loading
           ? <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento…</div>
           : <div style={{ overflowX:"auto" }}>
