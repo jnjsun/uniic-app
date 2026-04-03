@@ -40,17 +40,27 @@ const KEYWORDS = [
 ]
 
 const CATEGORIES_MAP: Record<string, string> = {
-  business: "economia",
-  economy: "economia",
-  trade: "economia",
-  technology: "tecnologia",
-  tech: "tecnologia",
+  business: "business",
+  economy: "business",
+  trade: "business",
+  finance: "business",
+  technology: "innovazione",
+  tech: "innovazione",
+  innovation: "innovazione",
+  startup: "innovazione",
   politics: "politica",
   policy: "politica",
   diplomacy: "politica",
+  government: "politica",
+  geopolitics: "geopolitica",
+  sanctions: "geopolitica",
+  military: "geopolitica",
+  defense: "geopolitica",
   culture: "cultura",
   education: "cultura",
-  sport: "sport",
+  sport: "cultura",
+  art: "cultura",
+  food: "cultura",
 }
 
 // --- Funzioni helper ---
@@ -109,7 +119,7 @@ function classifyCategory(title: string, description: string | null): string {
   for (const [keyword, cat] of Object.entries(CATEGORIES_MAP)) {
     if (text.includes(keyword)) return cat
   }
-  return "generale"
+  return "business"
 }
 
 /** Chiama Anthropic API per generare titolo e riassunto bilingue */
