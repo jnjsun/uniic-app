@@ -1143,12 +1143,149 @@ function NLLettura({ art, role, salvati, onToggleSalva, onBack, isAdmin, setArti
     </Box>}
   </div>);
 }
+// ── Digest constants ──────────────────────────────────────────────────────────
+const DIGEST_CAT = {
+  business:    { label:"Business",    color:C.blue,   icon:"💼" },
+  innovazione: { label:"Innovazione", color:C.green,  icon:"🚀" },
+  politica:    { label:"Politica",    color:C.red,    icon:"🏛️" },
+  geopolitica: { label:"Geopolitica", color:C.orange, icon:"🌍" },
+  cultura:     { label:"Cultura",     color:C.purple, icon:"🎭" },
+};
+
+const formatSettimana = (dateStr) => {
+  const d = new Date(dateStr + "T00:00:00");
+  const end = new Date(d); end.setDate(end.getDate() + 6);
+  const mesi = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+  return `${d.getDate()} ${mesi[d.getMonth()]} - ${end.getDate()} ${mesi[end.getMonth()]} ${end.getFullYear()}`;
+};
+
+const ImportanzaDots = ({ n }) => (
+  <div style={{ display:"flex", gap:3 }}>
+    {[1,2,3,4,5].map(i => (
+      <div key={i} style={{ width:7, height:7, borderRadius:"50%", background: i <= n ? C.gold : `${C.gold}33` }} />
+    ))}
+  </div>
+);
+
+// ── DigestSection (sub-component) ─────────────────────────────────────────────
+function DigestSection() {
+  const [digest, setDigest] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [lang, setLang] = useState("it");
+  const [filterCat, setFilterCat] = useState("tutti");
+  const [selectedWeek, setSelectedWeek] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.from('news_digest').select('*').eq('pubblicato', true).order('settimana_rif', { ascending: false });
+      if (!error && data) setDigest(data);
+      setLoading(false);
+    })();
+  }, []);
+
+  const settimane = useMemo(() => {
+    const map = {};
+    digest.forEach(d => {
+      if (!map[d.settimana_rif]) map[d.settimana_rif] = [];
+      map[d.settimana_rif].push(d);
+    });
+    return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [digest]);
+
+  if (loading) return <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento digest...</div>;
+
+  // Vista settimana selezionata
+  if (selectedWeek) {
+    const weekItems = digest.filter(d => d.settimana_rif === selectedWeek);
+    const filtered = filterCat === "tutti" ? weekItems : weekItems.filter(d => d.categoria === filterCat);
+    const sorted = [...filtered].sort((a, b) => b.importanza - a.importanza);
+
+    return (
+      <div>
+        <BackBtn onClick={() => { setSelectedWeek(null); setFilterCat("tutti"); }} label="← Digest" />
+        <h3 style={{ fontFamily:S, fontSize:20, color:C.text, margin:"0 0 6px" }}>Settimana {formatSettimana(selectedWeek)}</h3>
+        <p style={{ color:C.muted, fontSize:12, fontFamily:F, margin:"0 0 14px" }}>{weekItems.length} notizie</p>
+
+        {/* Toggle lingua */}
+        <div style={{ display:"flex", gap:6, marginBottom:14 }}>
+          <button onClick={() => setLang("it")} style={{ flex:1, padding:"8px 0", borderRadius:8, border:`1px solid ${lang==="it"?C.red:C.border}`, background:lang==="it"?C.redDim:C.surface, color:lang==="it"?C.red:C.muted, fontFamily:F, fontSize:12, fontWeight:lang==="it"?600:400, cursor:"pointer" }}>
+            IT Italiano
+          </button>
+          <button onClick={() => setLang("cn")} style={{ flex:1, padding:"8px 0", borderRadius:8, border:`1px solid ${lang==="cn"?C.red:C.border}`, background:lang==="cn"?C.redDim:C.surface, color:lang==="cn"?C.red:C.muted, fontFamily:F, fontSize:12, fontWeight:lang==="cn"?600:400, cursor:"pointer" }}>
+            CN 中文
+          </button>
+        </div>
+
+        {/* Filtro categoria */}
+        <div style={{ display:"flex", gap:6, marginBottom:18, overflowX:"auto", paddingBottom:4 }}>
+          <Pill active={filterCat==="tutti"} color={C.muted} onClick={() => setFilterCat("tutti")}>Tutte</Pill>
+          {Object.entries(DIGEST_CAT).map(([k, v]) => (
+            <Pill key={k} active={filterCat===k} color={v.color} onClick={() => setFilterCat(k)}>{v.icon} {v.label}</Pill>
+          ))}
+        </div>
+
+        {sorted.map(item => {
+          const cat = DIGEST_CAT[item.categoria];
+          return (
+            <Box key={item.id} sx={{ marginBottom:12 }}>
+              <div style={{ display:"flex", gap:8, marginBottom:8, alignItems:"center", flexWrap:"wrap" }}>
+                {cat && <Tag label={`${cat.icon} ${cat.label}`} color={cat.color} sm />}
+                <ImportanzaDots n={item.importanza} />
+              </div>
+              <div style={{ fontFamily:S, fontSize:17, color:C.text, lineHeight:1.35, marginBottom:6 }}>
+                {lang === "it" ? item.titolo_it : item.titolo_cn}
+              </div>
+              <div style={{ fontSize:13, color:C.muted, fontFamily:F, lineHeight:1.5, marginBottom:10 }}>
+                {lang === "it" ? item.riassunto_it : item.riassunto_cn}
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <span style={{ fontSize:11, color:C.faint, fontFamily:F }}>{item.fonte}</span>
+                {item.url_originale && (
+                  <button onClick={() => window.open(item.url_originale, '_blank')} style={{ background:C.alt, border:`1px solid ${C.border}`, borderRadius:6, padding:"5px 10px", color:C.gold, fontFamily:F, fontSize:11, cursor:"pointer" }}>
+                    Leggi originale ↗
+                  </button>
+                )}
+              </div>
+            </Box>
+          );
+        })}
+        {sorted.length === 0 && <div style={{ textAlign:"center", padding:40, color:C.muted, fontFamily:F, fontSize:13 }}>Nessuna notizia con questi filtri.</div>}
+      </div>
+    );
+  }
+
+  // Vista lista settimane
+  return (
+    <div>
+      {settimane.length === 0 && <div style={{ textAlign:"center", padding:40, color:C.muted, fontFamily:F, fontSize:13 }}>Nessun digest disponibile.</div>}
+      {settimane.map(([week, items]) => (
+        <Box key={week} onClick={() => setSelectedWeek(week)} sx={{ marginBottom:12, cursor:"pointer" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div>
+              <div style={{ fontFamily:S, fontSize:16, color:C.text, marginBottom:4 }}>Settimana {formatSettimana(week)}</div>
+              <div style={{ fontSize:12, color:C.muted, fontFamily:F }}>{items.length} notizie Italia-Cina</div>
+            </div>
+            <span style={{ fontSize:18, color:C.muted }}>›</span>
+          </div>
+          <div style={{ display:"flex", gap:4, marginTop:8, flexWrap:"wrap" }}>
+            {[...new Set(items.map(i => i.categoria))].map(cat => {
+              const c = DIGEST_CAT[cat];
+              return c ? <Tag key={cat} label={`${c.icon} ${c.label}`} color={c.color} sm /> : null;
+            })}
+          </div>
+        </Box>
+      ))}
+    </div>
+  );
+}
+
 function NewsletterSection({ role, isAdmin, socioProfilo, openId, onOpenHandled }) {
 
+  const [mainTab, setMainTab] = useState("articoli");
   const [articoli,setArticoli]=useState([]); const [notifiche,setNotifiche]=useState([]);
   const [selected,setSelected]=useState(null); const [filterCat,setFilterCat]=useState("tutti");
   const [filterTipo,setFilterTipo]=useState("tutti"); const [salvati,setSalvati]=useState([2]);
-  const [showSalvati,setShowSalvati]=useState(false); const [showNotif,setShowNotif]=useState(false)  
+  const [showSalvati,setShowSalvati]=useState(false); const [showNotif,setShowNotif]=useState(false)
   useEffect(() => { async function carica() {
     const { data, error } = await supabase.from('articoli').select('*');
     if (error) { console.log('Errore:', error); return; }
@@ -1203,12 +1340,24 @@ function NewsletterSection({ role, isAdmin, socioProfilo, openId, onOpenHandled 
     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14 }}>
       <div>
         <h2 style={{ fontFamily:S,fontSize:26,fontWeight:700,color:C.text,margin:0 }}>Newsletter</h2>
-        <p style={{ color:C.muted,fontSize:12,margin:"4px 0 0",fontFamily:F }}>{pubbl.length} articoli pubblicati</p>
+        <p style={{ color:C.muted,fontSize:12,margin:"4px 0 0",fontFamily:F }}>{mainTab==="articoli" ? `${pubbl.length} articoli pubblicati` : "Digest settimanale Italia-Cina"}</p>
       </div>
       <div style={{ display:"flex",gap:6 }}>
         <button onClick={() => setShowNotif(true)} style={{ background:notifiche.filter(n=>n.attiva).length>0?C.goldDim:C.alt,border:`1px solid ${notifiche.filter(n=>n.attiva).length>0?C.gold:C.border}`,borderRadius:8,padding:"7px 10px",color:C.gold,cursor:"pointer",fontSize:16 }}>🔔</button>
       </div>
     </div>
+
+    {/* Tab Articoli / Digest */}
+    <div style={{ display:"flex", gap:6, marginBottom:16 }}>
+      <button onClick={() => setMainTab("articoli")} style={{ flex:1, padding:"9px 0", borderRadius:8, border:`1px solid ${mainTab==="articoli"?C.red:C.border}`, background:mainTab==="articoli"?C.redDim:C.surface, color:mainTab==="articoli"?C.red:C.muted, fontFamily:F, fontSize:12, fontWeight:mainTab==="articoli"?600:400, cursor:"pointer" }}>
+        📰 Articoli
+      </button>
+      <button onClick={() => setMainTab("digest")} style={{ flex:1, padding:"9px 0", borderRadius:8, border:`1px solid ${mainTab==="digest"?C.red:C.border}`, background:mainTab==="digest"?C.redDim:C.surface, color:mainTab==="digest"?C.red:C.muted, fontFamily:F, fontSize:12, fontWeight:mainTab==="digest"?600:400, cursor:"pointer" }}>
+        🌏 Digest IT-CN
+      </button>
+    </div>
+
+    {mainTab === "digest" ? <DigestSection /> : <>
     <div style={{ display:"flex",gap:8,marginBottom:12 }}>
       <button onClick={() => setShowSalvati(s=>!s)} style={{ display:"flex",alignItems:"center",gap:6,background:showSalvati?C.redDim:C.alt,border:`1px solid ${showSalvati?C.red:C.border}`,borderRadius:20,padding:"7px 12px",color:showSalvati?C.red:C.muted,fontFamily:F,fontSize:11,cursor:"pointer" }}>
         🔖 Salvati{salvati.length>0?` (${salvati.length})`:""}
@@ -1259,6 +1408,7 @@ function NewsletterSection({ role, isAdmin, socioProfilo, openId, onOpenHandled 
       </Box>);
     })}
     {visible.length===0&&<div style={{ textAlign:"center",padding:40,color:C.muted,fontFamily:F,fontSize:13 }}>Nessun articolo con questi filtri.</div>}
+    </>}
   </div>);
 }
 
@@ -2015,6 +2165,60 @@ function EpisodioModal({ record, onClose, onSaved }) {
   );
 }
 
+// ── Digest modal ──────────────────────────────────────────────────────────────
+function DigestModal({ record, onClose, onSaved }) {
+  const VUOTO = { titolo_it:"", titolo_cn:"", riassunto_it:"", riassunto_cn:"", fonte:"", url_originale:"", categoria:"business", settimana_rif:"", importanza:3, pubblicato:true };
+  const [form, setForm] = useState(record ? {
+    titolo_it:record.titolo_it||"", titolo_cn:record.titolo_cn||"", riassunto_it:record.riassunto_it||"",
+    riassunto_cn:record.riassunto_cn||"", fonte:record.fonte||"", url_originale:record.url_originale||"",
+    categoria:record.categoria||"business", settimana_rif:record.settimana_rif||"",
+    importanza:record.importanza||3, pubblicato:record.pubblicato??true
+  } : { ...VUOTO });
+  const [saving, setSaving] = useState(false);
+  const [errore, setErrore] = useState("");
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
+  const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
+  const submit = async () => {
+    if (!form.titolo_it.trim() || !form.titolo_cn.trim()) { setErrore("Titolo IT e CN sono obbligatori."); return; }
+    if (!form.settimana_rif) { setErrore("La settimana di riferimento è obbligatoria."); return; }
+    setSaving(true); setErrore("");
+    const { error } = record
+      ? await supabase.from('news_digest').update(form).eq('id', record.id)
+      : await supabase.from('news_digest').insert([form]);
+    setSaving(false);
+    if (error) { setErrore(error.message); return; }
+    onSaved();
+  };
+  return (
+    <AdminModal titolo={record ? "Modifica digest" : "Aggiungi digest"} onClose={onClose} onSubmit={submit} saving={saving} errore={errore}>
+      <div><label style={LABEL}>Titolo IT</label><input style={INPUT} value={form.titolo_it} onChange={e => set("titolo_it", e.target.value)} placeholder="Titolo in italiano" /></div>
+      <div><label style={LABEL}>Titolo CN</label><input style={INPUT} value={form.titolo_cn} onChange={e => set("titolo_cn", e.target.value)} placeholder="中文标题" /></div>
+      <div><label style={LABEL}>Riassunto IT</label><textarea style={{ ...INPUT, minHeight:70, resize:"vertical" }} value={form.riassunto_it} onChange={e => set("riassunto_it", e.target.value)} placeholder="Riassunto in italiano…" /></div>
+      <div><label style={LABEL}>Riassunto CN</label><textarea style={{ ...INPUT, minHeight:70, resize:"vertical" }} value={form.riassunto_cn} onChange={e => set("riassunto_cn", e.target.value)} placeholder="中文摘要…" /></div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Fonte</label><input style={INPUT} value={form.fonte} onChange={e => set("fonte", e.target.value)} placeholder="es. Il Sole 24 Ore" /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Categoria</label>
+          <select style={INPUT} value={form.categoria} onChange={e => set("categoria", e.target.value)}>
+            <option value="business">Business</option><option value="innovazione">Innovazione</option>
+            <option value="politica">Politica</option><option value="geopolitica">Geopolitica</option>
+            <option value="cultura">Cultura</option>
+          </select>
+        </div>
+      </div>
+      <div><label style={LABEL}>URL originale</label><input style={INPUT} value={form.url_originale} onChange={e => set("url_originale", e.target.value)} placeholder="https://…" /></div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Settimana rif. (lunedi)</label><input type="date" style={INPUT} value={form.settimana_rif} onChange={e => set("settimana_rif", e.target.value)} /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Importanza (1-5)</label><input type="number" style={INPUT} value={form.importanza} onChange={e => set("importanza", Number(e.target.value))} min={1} max={5} /></div>
+      </div>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <input type="checkbox" id="digest-pubbl-cb" checked={form.pubblicato} onChange={e => set("pubblicato", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
+        <label htmlFor="digest-pubbl-cb" style={{ fontSize:11, color:C.muted, fontFamily:F, cursor:"pointer" }}>Pubblicato</label>
+      </div>
+    </AdminModal>
+  );
+}
+
 // ── AdminSection ───────────────────────────────────────────────────────────────
 function AdminSection({ socioProfilo, session }) {
   const [sottoTab, setSottoTab] = useState("soci");
@@ -2059,9 +2263,10 @@ function AdminSection({ socioProfilo, session }) {
     convenzioni: { tabella:"convenzioni", cols:[{k:"nome",l:"Azienda"},{k:"categoria",l:"Categoria"},{k:"scadenza",l:"Scadenza"},{k:"attiva",l:"Attiva"}] },
     articoli:    { tabella:"articoli",    cols:[{k:"titolo",l:"Titolo"},{k:"autore",l:"Autore"},{k:"data_pub",l:"Data"},{k:"pubblicato",l:"Pubbl."}] },
     podcast:     { tabella:"episodi",     cols:[{k:"titolo",l:"Titolo"},{k:"ospiti",l:"Ospiti"},{k:"data_pub",l:"Data"},{k:"durata",l:"Durata"}] },
+    digest:      { tabella:"news_digest", cols:[{k:"titolo_it",l:"Titolo"},{k:"categoria",l:"Cat."},{k:"settimana_rif",l:"Settimana"},{k:"pubblicato",l:"Pubbl."}] },
   };
 
-  const AGGIUNGI_LABEL = { soci:"+ Aggiungi socio", eventi:"+ Aggiungi evento", convenzioni:"+ Aggiungi convenzione", articoli:"+ Aggiungi articolo", podcast:"+ Aggiungi episodio" };
+  const AGGIUNGI_LABEL = { soci:"+ Aggiungi socio", eventi:"+ Aggiungi evento", convenzioni:"+ Aggiungi convenzione", articoli:"+ Aggiungi articolo", podcast:"+ Aggiungi episodio", digest:"+ Aggiungi digest" };
 
   const carica = async (tab = sottoTab) => {
     setLoading(true);
@@ -2088,6 +2293,7 @@ function AdminSection({ socioProfilo, session }) {
     if (sottoTab === "convenzioni") return <ConvenzioneModal {...props} />;
     if (sottoTab === "articoli")    return <ArticoloModal {...props} />;
     if (sottoTab === "podcast")     return <EpisodioModal {...props} />;
+    if (sottoTab === "digest")      return <DigestModal {...props} />;
   };
 
   const renderCella = (r, k) => {
@@ -2103,7 +2309,7 @@ function AdminSection({ socioProfilo, session }) {
     return <span style={{ color:C.text }}>{v}</span>;
   };
 
-  const TABS = ["Soci", "Eventi", "Convenzioni", "Articoli", "Podcast"];
+  const TABS = ["Soci", "Eventi", "Convenzioni", "Articoli", "Podcast", "Digest"];
 
   return (
     <div>
@@ -2137,6 +2343,11 @@ function AdminSection({ socioProfilo, session }) {
           <button onClick={() => setShowPushModal(true)} style={{ background:'none', border:'1px solid #C9A84C', color:'#C9A84C', borderRadius:8, padding:'8px 12px', fontSize:13, cursor:'pointer', marginRight:8 }}>
             🔔 Notifica
           </button>
+          {sottoTab === "digest" && (
+            <button disabled title="Richiede configurazione API (NewsAPI + Anthropic)" style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"7px 14px", color:C.faint, fontFamily:F, fontSize:12, cursor:"not-allowed", opacity:0.6 }}>
+              🤖 Genera digest
+            </button>
+          )}
           <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
             {AGGIUNGI_LABEL[sottoTab]}
           </button>
