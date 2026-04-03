@@ -15,14 +15,22 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export async function subscribeToPush(userId) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null
+  if (!('Notification' in window)) return null
+
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return null
 
   const registration = await navigator.serviceWorker.ready
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-  })
+
+  // Riusa subscription esistente se valida
+  let subscription = await registration.pushManager.getSubscription()
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    })
+  }
 
   const { endpoint, keys: { p256dh, auth } = {} } = subscription.toJSON()
 
