@@ -2222,6 +2222,7 @@ function EventoModal({ record, onClose, onSaved }) {
   const [form, setForm] = useState(record ? { titolo:record.titolo||"", desc_evento:record.desc_evento||"", tipo:record.tipo||"networking", data:record.data||"", luogo:record.luogo||"", posti:record.posti||50, iscrizioni_aperte:record.iscrizioni_aperte??true } : { ...VUOTO });
   const [saving, setSaving] = useState(false);
   const [errore, setErrore] = useState("");
+  const [sendPush, setSendPush] = useState(!record); // default ON per nuovi eventi
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
   const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
@@ -2231,8 +2232,26 @@ function EventoModal({ record, onClose, onSaved }) {
     const { error } = record
       ? await supabase.from('eventi').update(form).eq('id', record.id)
       : await supabase.from('eventi').insert([form]);
+    if (error) { setSaving(false); setErrore(error.message); return; }
+    // Invia push notification se checkbox attiva (solo per nuovi eventi)
+    if (sendPush && !record) {
+      try {
+        const dataFmt = form.data ? new Date(form.data).toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' }) : '';
+        await fetch('https://atltrjhnkklnkgwscsuy.supabase.co/functions/v1/send-push-notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0bHRyamhua2tsbmtnd3Njc3V5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTI0NDksImV4cCI6MjA5MDI4ODQ0OX0.-Jpg3LXe4TOUn5AIBho8hFm5foCCNrMO7Vc4QMi5IAI',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0bHRyamhua2tsbmtnd3Njc3V5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTI0NDksImV4cCI6MjA5MDI4ODQ0OX0.-Jpg3LXe4TOUn5AIBho8hFm5foCCNrMO7Vc4QMi5IAI'
+          },
+          body: JSON.stringify({
+            title: `Nuovo evento: ${form.titolo}`,
+            body: dataFmt ? `${dataFmt}${form.luogo ? ' — ' + form.luogo : ''}` : form.desc_evento || 'Scopri i dettagli nell\'app UNIIC'
+          })
+        });
+      } catch (e) { console.error('Push notification error:', e); }
+    }
     setSaving(false);
-    if (error) { setErrore(error.message); return; }
     onSaved();
   };
   return (
@@ -2253,6 +2272,12 @@ function EventoModal({ record, onClose, onSaved }) {
         <input type="checkbox" id="isc-cb" checked={form.iscrizioni_aperte} onChange={e => set("iscrizioni_aperte", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
         <label htmlFor="isc-cb" style={{ fontSize:11, color:C.muted, fontFamily:F, cursor:"pointer" }}>Iscrizioni aperte</label>
       </div>
+      {!record && (
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:4 }}>
+          <input type="checkbox" id="push-cb" checked={sendPush} onChange={e => setSendPush(e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
+          <label htmlFor="push-cb" style={{ fontSize:11, color:C.gold, fontFamily:F, cursor:"pointer" }}>🔔 Invia notifica push a tutti i soci</label>
+        </div>
+      )}
     </AdminModal>
   );
 }
@@ -2571,10 +2596,17 @@ function AdminSection({ socioProfilo, session, onPendingCount }) {
         }
       );
       if (!response.ok) throw new Error(await response.text());
+      const result = await response.json();
       setShowPushModal(false);
       setPushTitle("");
       setPushBody("");
-      alert('Notifiche inviate a tutti i soci!');
+      if (result.sent > 0) {
+        alert(`Notifiche inviate! ${result.sent} consegnate su ${result.total} dispositivi.${result.expired > 0 ? ` ${result.expired} subscription scadute rimosse.` : ''}`);
+      } else if (result.total === 0) {
+        alert('Nessun dispositivo registrato per le notifiche push.');
+      } else {
+        alert(`Invio completato: ${result.sent} consegnate, ${result.failed} fallite su ${result.total} totali.`);
+      }
     } catch (e) {
       alert("Errore durante l'invio: " + e.message);
     } finally {
