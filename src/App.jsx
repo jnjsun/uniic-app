@@ -1928,12 +1928,136 @@ const NAV_TABS = [
   { id:"podcast",     label:"Podcast",     icon:"🎙️" },
 ];
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCHERMATA RICHIESTA ISCRIZIONE (pre-login)
+// ═══════════════════════════════════════════════════════════════════════════════
+function RegistrationScreen({ onBack }) {
+  const [form, setForm] = useState({ nome:"", cognome:"", email:"", telefono:"", citta:"", nazionalita:"", data_nascita:"", azienda:"", ruolo_azienda:"", settore:"", messaggio:"" });
+  const [loading, setLoading] = useState(false);
+  const [errore, setErrore] = useState("");
+  const [inviata, setInviata] = useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const INPUT = { width:"100%", background:C.alt, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontSize:13, fontFamily:F, boxSizing:"border-box", outline:"none" };
+  const LABEL = { fontSize:10, color:C.faint, fontFamily:F, letterSpacing:.5, marginBottom:5, display:"block" };
+
+  const SETTORI = ["Commercio","Import/Export","Tech","Moda","Food & Beverage","Logistica","Finanza","Legale","Immobiliare","Consulenza","Turismo","Manifattura","Altro"];
+
+  const invia = async () => {
+    if (!form.nome.trim() || !form.cognome.trim() || !form.email.trim()) {
+      setErrore("Nome, cognome e email sono obbligatori.");
+      return;
+    }
+    setLoading(true); setErrore("");
+    const { error } = await supabase.from('richieste_iscrizione').insert([{
+      nome: form.nome.trim(),
+      cognome: form.cognome.trim(),
+      email: form.email.trim().toLowerCase(),
+      telefono: form.telefono.trim() || null,
+      citta: form.citta.trim() || null,
+      nazionalita: form.nazionalita.trim() || null,
+      data_nascita: form.data_nascita || null,
+      azienda: form.azienda.trim() || null,
+      ruolo_azienda: form.ruolo_azienda.trim() || null,
+      settore: form.settore || null,
+      messaggio: form.messaggio.trim() || null,
+      stato: 'pending'
+    }]);
+    setLoading(false);
+    if (error) {
+      if (error.message?.includes('unique') || error.code === '23505') {
+        setErrore("Esiste già una richiesta con questa email.");
+      } else {
+        setErrore("Errore durante l'invio: " + error.message);
+      }
+      return;
+    }
+    setInviata(true);
+  };
+
+  if (inviata) {
+    return (
+      <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#080605" }}>
+        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet" />
+        <div style={{ width:360, padding:"40px 32px", background:C.surface, borderRadius:20, border:`1px solid ${C.border}`, textAlign:"center" }}>
+          <div style={{ fontSize:48, marginBottom:16 }}>✅</div>
+          <h2 style={{ fontFamily:S, fontSize:22, color:C.text, margin:"0 0 12px" }}>Richiesta inviata!</h2>
+          <p style={{ fontFamily:F, fontSize:13, color:C.muted, lineHeight:1.6, margin:"0 0 24px" }}>
+            La tua richiesta è stata inviata con successo. Riceverai comunicazione dal Consiglio Direttivo entro 30 giorni.
+          </p>
+          <button onClick={onBack} style={{ background:C.red, border:"none", borderRadius:10, padding:"12px 24px", color:"#fff", fontSize:13, fontFamily:F, fontWeight:600, cursor:"pointer" }}>
+            ← Torna al login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display:"flex", justifyContent:"center", alignItems:"flex-start", minHeight:"100vh", background:"#080605", padding:"20px 0" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet" />
+      <div style={{ width:360, padding:"32px 28px", background:C.surface, borderRadius:20, border:`1px solid ${C.border}` }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", color:C.gold, fontSize:13, cursor:"pointer", padding:"0 0 16px", fontFamily:F }}>← Torna al login</button>
+        <div style={{ textAlign:"center", marginBottom:24 }}>
+          <div style={{ width:48, height:48, background:C.red, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, margin:"0 auto 12px" }}>🐉</div>
+          <h2 style={{ fontFamily:S, fontSize:22, color:C.text, margin:"0 0 4px" }}>Richiedi l'iscrizione</h2>
+          <p style={{ fontFamily:F, fontSize:11, color:C.muted, margin:0 }}>Compila il form per richiedere l'ammissione a UNIIC</p>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          <div style={{ fontSize:11, color:C.gold, fontFamily:F, fontWeight:600, letterSpacing:1, marginTop:4 }}>DATI PERSONALI</div>
+          <div style={{ display:"flex", gap:10 }}>
+            <div style={{ flex:1 }}><label style={LABEL}>Nome *</label><input style={INPUT} value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Mario" /></div>
+            <div style={{ flex:1 }}><label style={LABEL}>Cognome *</label><input style={INPUT} value={form.cognome} onChange={e => set("cognome", e.target.value)} placeholder="Rossi" /></div>
+          </div>
+          <div><label style={LABEL}>Email *</label><input style={INPUT} type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="mario@email.com" /></div>
+          <div><label style={LABEL}>Telefono</label><input style={INPUT} type="tel" value={form.telefono} onChange={e => set("telefono", e.target.value)} placeholder="+39 333 1234567" /></div>
+          <div style={{ display:"flex", gap:10 }}>
+            <div style={{ flex:1 }}><label style={LABEL}>Città</label><input style={INPUT} value={form.citta} onChange={e => set("citta", e.target.value)} placeholder="Milano" /></div>
+            <div style={{ flex:1 }}><label style={LABEL}>Nazionalità</label><input style={INPUT} value={form.nazionalita} onChange={e => set("nazionalita", e.target.value)} placeholder="Italiana" /></div>
+          </div>
+          <div><label style={LABEL}>Data di nascita</label><input style={INPUT} type="date" value={form.data_nascita} onChange={e => set("data_nascita", e.target.value)} /></div>
+
+          <div style={{ fontSize:11, color:C.gold, fontFamily:F, fontWeight:600, letterSpacing:1, marginTop:8 }}>DATI PROFESSIONALI</div>
+          <div style={{ display:"flex", gap:10 }}>
+            <div style={{ flex:1 }}><label style={LABEL}>Azienda</label><input style={INPUT} value={form.azienda} onChange={e => set("azienda", e.target.value)} placeholder="Nome azienda" /></div>
+            <div style={{ flex:1 }}><label style={LABEL}>Ruolo</label><input style={INPUT} value={form.ruolo_azienda} onChange={e => set("ruolo_azienda", e.target.value)} placeholder="CEO, Manager..." /></div>
+          </div>
+          <div>
+            <label style={LABEL}>Settore</label>
+            <select style={INPUT} value={form.settore} onChange={e => set("settore", e.target.value)}>
+              <option value="">Seleziona settore...</option>
+              {SETTORI.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
+          <div style={{ fontSize:11, color:C.gold, fontFamily:F, fontWeight:600, letterSpacing:1, marginTop:8 }}>MESSAGGIO</div>
+          <div>
+            <label style={LABEL}>Messaggio per il Consiglio Direttivo</label>
+            <textarea style={{ ...INPUT, resize:"vertical", minHeight:70 }} value={form.messaggio} onChange={e => set("messaggio", e.target.value)} placeholder="Motivazione per l'iscrizione, come hai conosciuto UNIIC..." rows={3} />
+          </div>
+        </div>
+
+        {errore && <div style={{ fontSize:12, color:C.red, fontFamily:F, marginTop:12, textAlign:"center" }}>{errore}</div>}
+
+        <button onClick={invia} disabled={loading} style={{ width:"100%", background:C.red, border:"none", borderRadius:10, padding:"13px", color:"#fff", fontSize:14, fontFamily:F, fontWeight:600, cursor:"pointer", marginTop:18, opacity:loading?0.7:1 }}>
+          {loading ? "Invio in corso..." : "Invia richiesta"}
+        </button>
+
+        <p style={{ textAlign:"center", fontSize:10, color:C.faint, fontFamily:F, marginTop:14, lineHeight:1.5 }}>
+          Art. 3 Statuto UNIIC: il Consiglio Direttivo ha 30 giorni per esprimersi sulla domanda di ammissione.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState("");
+  const [showRegistration, setShowRegistration] = useState(false);
 
   const login = async () => {
     if (!email || !password) { setErrore("Inserisci email e password"); return; }
@@ -1942,6 +2066,8 @@ function LoginScreen({ onLogin }) {
     if (error) { setErrore("Email o password non corretti"); setLoading(false); return; }
     onLogin();
   };
+
+  if (showRegistration) return <RegistrationScreen onBack={() => setShowRegistration(false)} />;
 
   return (
     <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#080605" }}>
@@ -1970,7 +2096,12 @@ function LoginScreen({ onLogin }) {
         <button onClick={login} disabled={loading} style={{ width:"100%", background:C.red, border:"none", borderRadius:10, padding:"13px", color:"#fff", fontSize:14, fontFamily:F, fontWeight:600, cursor:"pointer" }}>
           {loading ? "Accesso in corso..." : "Accedi →"}
         </button>
-        <p style={{ textAlign:"center", fontSize:11, color:C.faint, fontFamily:F, marginTop:20 }}>App riservata ai soci UNIIC</p>
+        <div style={{ textAlign:"center", marginTop:20 }}>
+          <p style={{ fontSize:11, color:C.faint, fontFamily:F, margin:"0 0 8px" }}>App riservata ai soci UNIIC</p>
+          <button onClick={() => setShowRegistration(true)} style={{ background:"none", border:"none", color:C.gold, fontFamily:F, fontSize:12, cursor:"pointer", textDecoration:"underline" }}>
+            Non sei ancora socio? Richiedi l'iscrizione
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2280,7 +2411,7 @@ function DigestModal({ record, onClose, onSaved }) {
 }
 
 // ── AdminSection ───────────────────────────────────────────────────────────────
-function AdminSection({ socioProfilo, session }) {
+function AdminSection({ socioProfilo, session, onPendingCount }) {
   const [sottoTab, setSottoTab] = useState("soci");
   const [righe, setRighe] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -2289,6 +2420,92 @@ function AdminSection({ socioProfilo, session }) {
   const [pushTitle, setPushTitle] = useState("");
   const [pushBody, setPushBody] = useState("");
   const [pushLoading, setPushLoading] = useState(false);
+  // Richieste iscrizione state
+  const [richieste, setRichieste] = useState([]);
+  const [richiesteLoading, setRichiesteLoading] = useState(false);
+  const [richiesteFilter, setRichiesteFilter] = useState("pending");
+  const [showRifiutoModal, setShowRifiutoModal] = useState(null);
+  const [motivoRifiuto, setMotivoRifiuto] = useState("");
+  const [approving, setApproving] = useState(null);
+  const [tempPassword, setTempPassword] = useState(null);
+
+  const caricaRichieste = async () => {
+    setRichiesteLoading(true);
+    let q = supabase.from('richieste_iscrizione').select('*').order('created_at', { ascending: false });
+    if (richiesteFilter !== "tutte") q = q.eq('stato', richiesteFilter);
+    const { data } = await q;
+    setRichieste(data || []);
+    setRichiesteLoading(false);
+  };
+
+  // Count pending for badge
+  useEffect(() => {
+    const countPending = async () => {
+      const { count } = await supabase.from('richieste_iscrizione').select('*', { count: 'exact', head: true }).eq('stato', 'pending');
+      onPendingCount?.(count || 0);
+    };
+    countPending();
+  }, [richieste]);
+
+  useEffect(() => { if (sottoTab === "richieste") caricaRichieste(); }, [sottoTab, richiesteFilter]);
+
+  const approvaRichiesta = async (r) => {
+    setApproving(r.id);
+    try {
+      const pwd = 'Uniic' + Math.random().toString(36).slice(2, 8) + '!';
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: r.email,
+        password: pwd,
+        options: { data: { nome: r.nome, cognome: r.cognome } }
+      });
+      if (authErr) { alert("Errore creazione account: " + authErr.message); setApproving(null); return; }
+
+      const { error: socioErr } = await supabase.from('soci').insert([{
+        user_id: authData.user?.id || null,
+        nome: `${r.nome} ${r.cognome}`,
+        cognome: r.cognome,
+        email: r.email,
+        telefono: r.telefono,
+        citta: r.citta,
+        nazionalita: r.nazionalita,
+        data_nascita: r.data_nascita,
+        azienda: r.azienda,
+        ruolo_azienda: r.ruolo_azienda,
+        settore: r.settore,
+        tipo: 'ordinario',
+        attivo: true,
+        anno_iscritto: new Date().getFullYear()
+      }]);
+      if (socioErr) { alert("Errore creazione socio: " + socioErr.message); setApproving(null); return; }
+
+      await supabase.from('richieste_iscrizione').update({
+        stato: 'approved',
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: session?.user?.id
+      }).eq('id', r.id);
+
+      setTempPassword({ email: r.email, nome: `${r.nome} ${r.cognome}`, password: pwd });
+      caricaRichieste();
+    } catch (e) {
+      alert("Errore: " + e.message);
+    }
+    setApproving(null);
+  };
+
+  const rifiutaRichiesta = async () => {
+    if (!showRifiutoModal) return;
+    setApproving(showRifiutoModal.id);
+    await supabase.from('richieste_iscrizione').update({
+      stato: 'rejected',
+      motivo_rifiuto: motivoRifiuto.trim() || null,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: session?.user?.id
+    }).eq('id', showRifiutoModal.id);
+    setShowRifiutoModal(null);
+    setMotivoRifiuto("");
+    setApproving(null);
+    caricaRichieste();
+  };
 
   const inviaPush = async () => {
     setPushLoading(true);
@@ -2335,7 +2552,7 @@ function AdminSection({ socioProfilo, session }) {
     setLoading(false);
   };
 
-  useEffect(() => { carica(sottoTab); }, [sottoTab]);
+  useEffect(() => { if (sottoTab !== "richieste") carica(sottoTab); }, [sottoTab]);
 
   const elimina = async (r) => {
     const label = r.nome || r.titolo || r.id;
@@ -2369,7 +2586,108 @@ function AdminSection({ socioProfilo, session }) {
     return <span style={{ color:C.text }}>{v}</span>;
   };
 
-  const TABS = ["Soci", "Eventi", "Convenzioni", "Articoli", "Podcast", "Digest"];
+  const TABS = ["Soci", "Eventi", "Convenzioni", "Articoli", "Podcast", "Digest", "Richieste"];
+
+  const renderRichieste = () => {
+    const STATO_BADGE = { pending: { c: C.gold, l: "In attesa" }, approved: { c: C.green, l: "Approvata" }, rejected: { c: C.red, l: "Rifiutata" } };
+    return (
+      <div>
+        {tempPassword && (
+          <div style={{ position:"fixed", inset:0, background:"#000a", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ background:C.surface, borderRadius:16, padding:28, width:"90%", maxWidth:400, border:`1px solid ${C.green}44` }}>
+              <div style={{ fontSize:32, textAlign:"center", marginBottom:12 }}>✅</div>
+              <h3 style={{ fontFamily:S, fontSize:18, color:C.text, margin:"0 0 14px", textAlign:"center" }}>Account creato!</h3>
+              <div style={{ background:C.alt, borderRadius:10, padding:16, marginBottom:16 }}>
+                <div style={{ fontFamily:F, fontSize:12, color:C.muted, marginBottom:6 }}>Socio: <span style={{ color:C.text }}>{tempPassword.nome}</span></div>
+                <div style={{ fontFamily:F, fontSize:12, color:C.muted, marginBottom:6 }}>Email: <span style={{ color:C.text }}>{tempPassword.email}</span></div>
+                <div style={{ fontFamily:F, fontSize:12, color:C.muted }}>Password temporanea:</div>
+                <div style={{ fontFamily:"monospace", fontSize:16, color:C.gold, marginTop:6, padding:"8px 12px", background:C.bg, borderRadius:8, textAlign:"center", letterSpacing:1, userSelect:"all" }}>{tempPassword.password}</div>
+              </div>
+              <p style={{ fontFamily:F, fontSize:11, color:C.muted, textAlign:"center", margin:"0 0 16px" }}>Comunica queste credenziali al nuovo socio.</p>
+              <button onClick={() => { navigator.clipboard?.writeText(`Email: ${tempPassword.email}\nPassword: ${tempPassword.password}`); }} style={{ width:"100%", background:C.alt, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px", color:C.text, fontFamily:F, fontSize:12, cursor:"pointer", marginBottom:8 }}>
+                📋 Copia credenziali
+              </button>
+              <button onClick={() => setTempPassword(null)} style={{ width:"100%", background:C.green, border:"none", borderRadius:8, padding:"9px", color:"#fff", fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                Chiudi
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showRifiutoModal && (
+          <div style={{ position:"fixed", inset:0, background:"#000a", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ background:C.surface, borderRadius:16, padding:28, width:"90%", maxWidth:400, border:`1px solid ${C.red}44` }}>
+              <h3 style={{ fontFamily:S, fontSize:18, color:C.text, margin:"0 0 14px" }}>Rifiuta richiesta</h3>
+              <p style={{ fontFamily:F, fontSize:12, color:C.muted, margin:"0 0 12px" }}>Richiesta di {showRifiutoModal.nome} {showRifiutoModal.cognome}</p>
+              <label style={{ fontFamily:F, fontSize:11, color:C.muted, display:"block", marginBottom:4 }}>Motivo del rifiuto (opzionale)</label>
+              <textarea value={motivoRifiuto} onChange={e => setMotivoRifiuto(e.target.value)} rows={3} placeholder="Motivo..." style={{ width:"100%", background:C.alt, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, resize:"vertical", boxSizing:"border-box" }} />
+              <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:16 }}>
+                <button onClick={() => { setShowRifiutoModal(null); setMotivoRifiuto(""); }} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 16px", color:C.muted, fontFamily:F, fontSize:12, cursor:"pointer" }}>Annulla</button>
+                <button onClick={rifiutaRichiesta} disabled={!!approving} style={{ background:C.red, border:"none", borderRadius:8, padding:"8px 16px", color:"#fff", fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                  {approving ? "..." : "Rifiuta"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display:"flex", gap:6, marginBottom:16 }}>
+          {[{id:"pending",l:"In attesa"},{id:"approved",l:"Approvate"},{id:"rejected",l:"Rifiutate"},{id:"tutte",l:"Tutte"}].map(f => (
+            <button key={f.id} onClick={() => setRichiesteFilter(f.id)} style={{
+              padding:"6px 12px", borderRadius:8, fontSize:11, fontFamily:F, cursor:"pointer",
+              background: richiesteFilter===f.id ? `${C.gold}22` : C.alt,
+              border: `1px solid ${richiesteFilter===f.id ? C.gold : C.border}`,
+              color: richiesteFilter===f.id ? C.gold : C.muted
+            }}>{f.l}</button>
+          ))}
+        </div>
+
+        {richiesteLoading
+          ? <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento…</div>
+          : richieste.length === 0
+            ? <div style={{ textAlign:"center", color:C.faint, fontFamily:F, fontSize:12, paddingTop:30 }}>Nessuna richiesta {richiesteFilter === "pending" ? "in attesa" : "trovata"}.</div>
+            : richieste.map(r => {
+                const badge = STATO_BADGE[r.stato] || STATO_BADGE.pending;
+                return (
+                  <div key={r.id} style={{ background:C.alt, border:`1px solid ${C.border}`, borderRadius:12, padding:16, marginBottom:10 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+                      <div>
+                        <div style={{ fontFamily:S, fontSize:17, color:C.text, fontWeight:700 }}>{r.nome} {r.cognome}</div>
+                        <div style={{ fontFamily:F, fontSize:12, color:C.muted, marginTop:2 }}>{r.email}</div>
+                      </div>
+                      <Tag label={badge.l} color={badge.c} sm />
+                    </div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:8 }}>
+                      {r.azienda && <span style={{ fontFamily:F, fontSize:11, color:C.text }}>🏢 {r.azienda}</span>}
+                      {r.ruolo_azienda && <span style={{ fontFamily:F, fontSize:11, color:C.muted }}>· {r.ruolo_azienda}</span>}
+                      {r.settore && <span style={{ fontFamily:F, fontSize:11, color:C.gold }}>· {r.settore}</span>}
+                    </div>
+                    {r.citta && <div style={{ fontFamily:F, fontSize:11, color:C.muted, marginBottom:4 }}>📍 {r.citta}{r.nazionalita ? ` · ${r.nazionalita}` : ""}</div>}
+                    {r.messaggio && <div style={{ fontFamily:F, fontSize:12, color:C.text, background:C.bg, borderRadius:8, padding:"8px 12px", marginBottom:8, lineHeight:1.5, fontStyle:"italic" }}>"{r.messaggio}"</div>}
+                    <div style={{ fontFamily:F, fontSize:10, color:C.faint, marginBottom:8 }}>📅 Richiesta: {new Date(r.created_at).toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })}</div>
+                    {r.stato === 'pending' && (
+                      <div style={{ display:"flex", gap:8 }}>
+                        <button onClick={() => approvaRichiesta(r)} disabled={!!approving} style={{ flex:1, background:C.greenDim, border:`1px solid ${C.green}44`, borderRadius:8, padding:"8px 0", color:C.green, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer", opacity:approving===r.id?0.6:1 }}>
+                          {approving===r.id ? "Creazione account…" : "✓ Approva"}
+                        </button>
+                        <button onClick={() => setShowRifiutoModal(r)} disabled={!!approving} style={{ flex:1, background:C.redDim, border:`1px solid ${C.red}44`, borderRadius:8, padding:"8px 0", color:C.red, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                          ✗ Rifiuta
+                        </button>
+                      </div>
+                    )}
+                    {r.stato === 'rejected' && r.motivo_rifiuto && (
+                      <div style={{ fontFamily:F, fontSize:11, color:C.red, marginTop:4 }}>Motivo: {r.motivo_rifiuto}</div>
+                    )}
+                    {r.reviewed_at && (
+                      <div style={{ fontFamily:F, fontSize:10, color:C.faint, marginTop:4 }}>Revisione: {new Date(r.reviewed_at).toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })}</div>
+                    )}
+                  </div>
+                );
+              })
+        }
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -2408,9 +2726,9 @@ function AdminSection({ socioProfilo, session }) {
               🤖 Genera digest
             </button>
           )}
-          <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+          {sottoTab !== "richieste" && <button onClick={() => setModal("nuovo")} style={{ background:C.gold, border:"none", borderRadius:8, padding:"7px 14px", color:C.bg, fontFamily:F, fontSize:12, fontWeight:600, cursor:"pointer" }}>
             {AGGIUNGI_LABEL[sottoTab]}
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -2422,36 +2740,38 @@ function AdminSection({ socioProfilo, session }) {
         ))}
       </div>
 
-      {loading
-        ? <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento…</div>
-        : <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontFamily:F, fontSize:12 }}>
-              <thead>
-                <tr style={{ borderBottom:`1px solid ${C.border}` }}>
-                  {CONF[sottoTab].cols.map(c => (
-                    <th key={c.k} style={{ textAlign:"left", padding:"6px 8px", color:C.muted, fontWeight:600, fontSize:11 }}>{c.l}</th>
-                  ))}
-                  <th style={{ padding:"6px 8px" }} />
-                </tr>
-              </thead>
-              <tbody>
-                {righe.map((r, i) => (
-                  <tr key={i} style={{ borderBottom:`1px solid ${C.border}22` }}>
-                    {CONF[sottoTab].cols.map(c => (
-                      <td key={c.k} style={{ padding:"8px 8px", fontSize:12 }}>{renderCella(r, c.k)}</td>
+      {sottoTab === "richieste"
+        ? renderRichieste()
+        : loading
+          ? <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento…</div>
+          : <div style={{ overflowX:"auto" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse", fontFamily:F, fontSize:12 }}>
+                <thead>
+                  <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                    {CONF[sottoTab]?.cols.map(c => (
+                      <th key={c.k} style={{ textAlign:"left", padding:"6px 8px", color:C.muted, fontWeight:600, fontSize:11 }}>{c.l}</th>
                     ))}
-                    <td style={{ padding:"8px 4px" }}>
-                      <div style={{ display:"flex", gap:4 }}>
-                        <button onClick={() => setModal(r)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"3px 8px", color:C.muted, fontFamily:F, fontSize:10, cursor:"pointer" }}>Modifica</button>
-                        <button onClick={() => elimina(r)} style={{ background:"none", border:`1px solid ${C.red}44`, borderRadius:6, padding:"3px 8px", color:C.red, fontFamily:F, fontSize:10, cursor:"pointer" }}>Elimina</button>
-                      </div>
-                    </td>
+                    <th style={{ padding:"6px 8px" }} />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {righe.length === 0 && <div style={{ textAlign:"center", color:C.faint, fontFamily:F, fontSize:12, paddingTop:20 }}>Nessun record trovato.</div>}
-          </div>
+                </thead>
+                <tbody>
+                  {righe.map((r, i) => (
+                    <tr key={i} style={{ borderBottom:`1px solid ${C.border}22` }}>
+                      {CONF[sottoTab]?.cols.map(c => (
+                        <td key={c.k} style={{ padding:"8px 8px", fontSize:12 }}>{renderCella(r, c.k)}</td>
+                      ))}
+                      <td style={{ padding:"8px 4px" }}>
+                        <div style={{ display:"flex", gap:4 }}>
+                          <button onClick={() => setModal(r)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"3px 8px", color:C.muted, fontFamily:F, fontSize:10, cursor:"pointer" }}>Modifica</button>
+                          <button onClick={() => elimina(r)} style={{ background:"none", border:`1px solid ${C.red}44`, borderRadius:6, padding:"3px 8px", color:C.red, fontFamily:F, fontSize:10, cursor:"pointer" }}>Elimina</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {righe.length === 0 && <div style={{ textAlign:"center", color:C.faint, fontFamily:F, fontSize:12, paddingTop:20 }}>Nessun record trovato.</div>}
+            </div>
       }
     </div>
   );
@@ -2564,6 +2884,7 @@ export default function App() {
   const [socioProfilo, setSocioProfilo] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
   const [deepLink, setDeepLink] = useState(null);
+  const [pendingRichieste, setPendingRichieste] = useState(0);
 
   const caricaProfilo = async () => {
     if (!session) return;
@@ -2582,6 +2903,11 @@ useEffect(() => {
   if (!session) return;
   caricaProfilo();
   subscribeToPush(session.user.id).catch(() => {});
+  // Load pending richieste count for admin badge
+  if (session.user?.email === "jj@suncapital.it") {
+    supabase.from('richieste_iscrizione').select('*', { count: 'exact', head: true }).eq('stato', 'pending')
+      .then(({ count }) => setPendingRichieste(count || 0));
+  }
 }, [session]);
 
   useEffect(() => {
@@ -2612,7 +2938,7 @@ useEffect(() => {
       case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} openId={deepLink?.tab==="newsletter" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
       case "account":     return <AccountSection socioProfilo={socioProfilo} session={session} onRefresh={caricaProfilo} />;
-      case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} session={session} /> : null;
+      case "admin":       return isSuperAdmin ? <AdminSection socioProfilo={socioProfilo} session={session} onPendingCount={setPendingRichieste} /> : null;
       default:            return null;
     }
   };
@@ -2643,8 +2969,11 @@ useEffect(() => {
         {showSearch && <SearchModal onClose={() => setShowSearch(false)} onNav={(tab, id) => { setTab(tab); if (id) setDeepLink({ tab, id }); }} />}
         <div style={{ position:"absolute", bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 10px", flexShrink:0 }}>
           {[{id:"home",label:"Home",icon:"🏠"},{id:"soci",label:"Soci",icon:"👥"},{id:"convenzioni",label:"Convenzioni",icon:"🤝"},{id:"eventi",label:"Eventi",icon:"📅"},{id:"newsletter",label:"News",icon:"📰"},{id:"podcast",label:"Podcast",icon:"🎙️"},{id:"account",label:"Account",icon:"👤"},...(isSuperAdmin?[{id:"admin",label:"Admin",icon:"⚙️"}]:[])].map(n => (
-            <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0" }}>
+            <button key={n.id} onClick={() => setTab(n.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", padding:"4px 0", position:"relative" }}>
               <span style={{ fontSize:18 }}>{n.icon}</span>
+              {n.id === "admin" && pendingRichieste > 0 && (
+                <span style={{ position:"absolute", top:0, right:"50%", transform:"translateX(12px)", background:C.red, color:"#fff", fontSize:9, fontWeight:700, borderRadius:"50%", width:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:F }}>{pendingRichieste}</span>
+              )}
               <span style={{ fontSize:9, fontFamily:F, color:tab===n.id?C.red:C.muted, fontWeight:tab===n.id?600:400 }}>{n.label}</span>
               {tab===n.id && <div style={{ width:14, height:2, background:C.red, borderRadius:2 }} />}
             </button>
