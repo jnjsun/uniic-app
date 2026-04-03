@@ -1195,6 +1195,7 @@ function DigestSection() {
   const [lang, setLang] = useState("it");
   const [filterCat, setFilterCat] = useState("tutti");
   const [selectedWeek, setSelectedWeek] = useState(null);
+  const [selectedArticle, setSelectedArticle] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -1214,6 +1215,57 @@ function DigestSection() {
   }, [digest]);
 
   if (loading) return <div style={{ textAlign:"center", color:C.muted, fontFamily:F, fontSize:13, paddingTop:30 }}>Caricamento digest...</div>;
+
+  // Vista dettaglio articolo
+  if (selectedArticle) {
+    const cat = DIGEST_CAT[selectedArticle.categoria];
+    return (
+      <div>
+        <BackBtn onClick={() => setSelectedArticle(null)} label="← Torna al digest" />
+
+        {/* Toggle lingua */}
+        <div style={{ display:"flex", gap:6, marginBottom:14 }}>
+          <button onClick={() => setLang("it")} style={{ flex:1, padding:"8px 0", borderRadius:8, border:`1px solid ${lang==="it"?C.red:C.border}`, background:lang==="it"?C.redDim:C.surface, color:lang==="it"?C.red:C.muted, fontFamily:F, fontSize:12, fontWeight:lang==="it"?600:400, cursor:"pointer" }}>
+            IT Italiano
+          </button>
+          <button onClick={() => setLang("cn")} style={{ flex:1, padding:"8px 0", borderRadius:8, border:`1px solid ${lang==="cn"?C.red:C.border}`, background:lang==="cn"?C.redDim:C.surface, color:lang==="cn"?C.red:C.muted, fontFamily:F, fontSize:12, fontWeight:lang==="cn"?600:400, cursor:"pointer" }}>
+            CN 中文
+          </button>
+        </div>
+
+        <Box>
+          {/* Categoria badge + importanza */}
+          <div style={{ display:"flex", gap:8, marginBottom:10, alignItems:"center", flexWrap:"wrap" }}>
+            {cat && <Tag label={`${cat.icon} ${cat.label}`} color={cat.color} sm />}
+            <ImportanzaDots n={selectedArticle.importanza} />
+          </div>
+
+          {/* Titolo completo */}
+          <h2 style={{ fontFamily:S, fontSize:22, color:C.text, lineHeight:1.3, margin:"0 0 12px" }}>
+            {lang === "it" ? selectedArticle.titolo_it : selectedArticle.titolo_cn}
+          </h2>
+
+          {/* Fonte e data */}
+          <div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:16 }}>
+            {selectedArticle.fonte && <span style={{ fontSize:12, color:C.gold, fontFamily:F, fontWeight:600 }}>{selectedArticle.fonte}</span>}
+            {selectedArticle.settimana_rif && <span style={{ fontSize:11, color:C.faint, fontFamily:F }}>{formatSettimana(selectedArticle.settimana_rif)}</span>}
+          </div>
+
+          {/* Riassunto completo */}
+          <div style={{ fontSize:14, color:C.muted, fontFamily:F, lineHeight:1.7, marginBottom:20, whiteSpace:"pre-line" }}>
+            {lang === "it" ? selectedArticle.riassunto_it : selectedArticle.riassunto_cn}
+          </div>
+
+          {/* Bottone leggi originale */}
+          {selectedArticle.url_originale && (
+            <button onClick={() => window.open(selectedArticle.url_originale, '_blank')} style={{ width:"100%", padding:"12px 0", borderRadius:10, border:`1px solid ${C.gold}`, background:`${C.gold}15`, color:C.gold, fontFamily:F, fontSize:13, fontWeight:600, cursor:"pointer", marginBottom:0 }}>
+              Leggi articolo originale ↗
+            </button>
+          )}
+        </Box>
+      </div>
+    );
+  }
 
   // Vista settimana selezionata
   if (selectedWeek) {
@@ -1248,7 +1300,7 @@ function DigestSection() {
         {sorted.map(item => {
           const cat = DIGEST_CAT[item.categoria];
           return (
-            <Box key={item.id} sx={{ marginBottom:12 }}>
+            <Box key={item.id} onClick={() => setSelectedArticle(item)} sx={{ marginBottom:12, cursor:"pointer" }}>
               <div style={{ display:"flex", gap:8, marginBottom:8, alignItems:"center", flexWrap:"wrap" }}>
                 {cat && <Tag label={`${cat.icon} ${cat.label}`} color={cat.color} sm />}
                 <ImportanzaDots n={item.importanza} />
@@ -1256,16 +1308,12 @@ function DigestSection() {
               <div style={{ fontFamily:S, fontSize:17, color:C.text, lineHeight:1.35, marginBottom:6 }}>
                 {lang === "it" ? item.titolo_it : item.titolo_cn}
               </div>
-              <div style={{ fontSize:13, color:C.muted, fontFamily:F, lineHeight:1.5, marginBottom:10 }}>
+              <div style={{ fontSize:13, color:C.muted, fontFamily:F, lineHeight:1.5, marginBottom:10, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
                 {lang === "it" ? item.riassunto_it : item.riassunto_cn}
               </div>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:11, color:C.faint, fontFamily:F }}>{item.fonte}</span>
-                {item.url_originale && (
-                  <button onClick={() => window.open(item.url_originale, '_blank')} style={{ background:C.alt, border:`1px solid ${C.border}`, borderRadius:6, padding:"5px 10px", color:C.gold, fontFamily:F, fontSize:11, cursor:"pointer" }}>
-                    Leggi originale ↗
-                  </button>
-                )}
+                <span style={{ fontSize:11, color:C.gold, fontFamily:F }}>Dettaglio →</span>
               </div>
             </Box>
           );
