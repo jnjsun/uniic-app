@@ -291,14 +291,18 @@ function SociProfilo({ socio, role, onBack, isAdmin }) {
     await supabase.from('soci').update({ ruolo_commento: ruoloCommento || null }).eq('id', socio.id);
   };
 
+  const isAzienda = socio.tipo_socio === 'azienda';
+  const displayName = isAzienda ? (socio.ragione_sociale || 'Azienda') : [socio.nome, socio.cognome].filter(Boolean).join(' ') || '—';
+
   return (
     <div>
       <BackBtn onClick={onBack} label="← Elenco soci" />
       <div style={{ background:`linear-gradient(135deg,${socio.colorAccent}22,${C.alt})`,border:`1px solid ${socio.colorAccent}33`,borderRadius:16,padding:20,marginBottom:16 }}>
         <div style={{ display:"flex",gap:14,alignItems:"flex-start" }}>
-          <Avatar initials={socio.initials} size={64} color={socio.colorAccent} />
+          <Avatar initials={socio.initials || (isAzienda ? '🏢' : '?')} size={64} color={socio.colorAccent} />
           <div style={{ flex:1 }}>
-            <h2 style={{ fontFamily:S,fontSize:24,color:C.text,margin:"0 0 6px",lineHeight:1.1 }}>{socio.nome}</h2>
+            <h2 style={{ fontFamily:S,fontSize:isAzienda?20:24,color:C.text,margin:"0 0 6px",lineHeight:1.1 }}>{displayName}</h2>
+            {isAzienda && <div style={{ display:"inline-block",background:C.goldDim,color:C.gold,fontSize:10,fontFamily:F,fontWeight:600,padding:"2px 8px",borderRadius:6,marginBottom:6 }}>AZIENDA</div>}
             <div style={{ display:"flex",gap:6,flexWrap:"wrap",alignItems:"center" }}>
               {localRuolo && (
                 isAdmin ? (
@@ -363,23 +367,33 @@ function SociProfilo({ socio, role, onBack, isAdmin }) {
         <FieldRow icon="📞" label="TELEFONO" value={socio.telefono||"—"} locked={false} href={socio.telefono?`tel:${socio.telefono}`:null} />
         <FieldRow icon="🌐" label="NAZIONALITÀ" value={socio.nazionalita||"—"} locked={false} />
         {socio.eta&&<FieldRow icon="🎂" label="ETÀ" value={`${socio.eta} anni`} locked={false} />}
+        {socio.codice_fiscale&&<FieldRow icon="🪪" label="CODICE FISCALE" value={socio.codice_fiscale} locked={false} />}
+        {(socio.indirizzo||socio.citta)&&<FieldRow icon="📍" label="INDIRIZZO" value={[socio.indirizzo,socio.cap,socio.citta,socio.provincia&&`(${socio.provincia})`,socio.regione].filter(Boolean).join(', ')} locked={false} />}
         {socio.hobby?.length>0&&<div style={{ padding:"10px 0" }}>
           <div style={{ fontSize:10,color:C.faint,fontFamily:F,marginBottom:8,letterSpacing:.5 }}>🎨 HOBBY & INTERESSI</div>
           <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>{socio.hobby.map(h=><Tag key={h} label={h} color={socio.colorAccent} />)}</div>
         </div>}
       </div>}
       {sub==="impresa"&&<div>
-        <FieldRow icon="🏢" label="RAGIONE SOCIALE" value={socio.impresa_nome||"—"} locked={false} />
-        <FieldRow icon="🏭" label="SETTORE" value={socio.impresa_settore||"—"} locked={false} />
-        <FieldRow icon="🧾" label="PARTITA IVA" value={socio.piva||"—"} locked={false} />
+        <FieldRow icon="🏢" label="RAGIONE SOCIALE" value={socio.ragione_sociale||socio.impresa_nome||"—"} locked={false} />
+        <FieldRow icon="💼" label="AZIENDA" value={socio.azienda||"—"} locked={false} />
+        <FieldRow icon="👤" label="RUOLO" value={socio.ruolo_azienda||"—"} locked={false} />
+        <FieldRow icon="🏭" label="SETTORE" value={socio.settore||socio.impresa_settore||"—"} locked={false} />
+        <FieldRow icon="🧾" label="PARTITA IVA" value={socio.partita_iva||socio.piva||"—"} locked={false} />
+        {socio.sito_web&&<FieldRow icon="🔗" label="SITO WEB" value={socio.sito_web} locked={false} href={socio.sito_web.startsWith('http')?socio.sito_web:`https://${socio.sito_web}`} />}
       </div>}
       {sub==="famiglia"&&<div>
         <FieldRow icon="💍" label="CONIUGE" value={socio.famiglia?.coniuge||(socio.famiglia?.note||"—")} locked={false} />
         <FieldRow icon="👶" label="FIGLI" value={`${socio.famiglia?.figli||0} figli`} locked={false} />
       </div>}
       {sub==="storico"&&<div>
+        {(socio.data_iscrizione||socio.ultima_tessera||socio.ultimo_pagamento)&&<div style={{ marginBottom:16 }}>
+          {socio.data_iscrizione&&<FieldRow icon="📅" label="DATA ISCRIZIONE" value={new Date(socio.data_iscrizione).toLocaleDateString('it-IT')} locked={false} />}
+          {socio.ultima_tessera&&<FieldRow icon="🪪" label="ULTIMA TESSERA" value={socio.ultima_tessera} locked={false} />}
+          {socio.ultimo_pagamento&&<FieldRow icon="💰" label="ULTIMO PAGAMENTO" value={socio.ultimo_pagamento} locked={false} />}
+        </div>}
         {!(socio.storico?.length) ? (
-          <div style={{ textAlign:"center",padding:40,color:C.muted,fontFamily:F,fontSize:14 }}>Nessuno storico disponibile</div>
+          <div style={{ textAlign:"center",padding:40,color:C.muted,fontFamily:F,fontSize:14 }}>Nessuno storico pagamenti disponibile</div>
         ) : (<>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
             <span style={{ color:C.muted,fontFamily:F,fontSize:12 }}>Totale versato</span>
@@ -437,8 +451,8 @@ async function caricaSoci() {
   const tcMap = { direttivo:C.red,sostenitore:C.gold,ordinario:C.blue };
   const filtered = useMemo(() => sociDB.filter(s => {
     const q=search.toLowerCase();
-    return (!q||s.nome.toLowerCase().includes(q)||s.impresa_nome.toLowerCase().includes(q)||s.impresa_settore.toLowerCase().includes(q))
-      &&(filterTipo==="tutti"||s.tipo===filterTipo);
+    const match = !q || [s.nome,s.cognome,s.ragione_sociale,s.azienda,s.impresa_nome,s.settore,s.impresa_settore,s.citta].some(v => v && String(v).toLowerCase().includes(q));
+    return match && (filterTipo==="tutti"||s.tipo===filterTipo);
 }),[sociDB,search,filterTipo]);
   const isAdminUser = role === "direttivo";
   if(loading) return <div style={{textAlign:"center",padding:40,color:C.muted,fontFamily:F}}>Caricamento...</div>;
@@ -462,19 +476,26 @@ async function caricaSoci() {
           ))}
         </div>
       </Box>}
-      {filtered.map(s => (
+      {filtered.map(s => {
+        const isAzienda = s.tipo_socio === 'azienda';
+        const cardTitle = isAzienda ? (s.ragione_sociale || 'Azienda') : [s.nome, s.cognome].filter(Boolean).join(' ') || '—';
+        const cardSub = isAzienda ? (s.settore || s.impresa_settore || '') : (s.azienda || s.impresa_nome || '');
+        return (
         <Box key={s.id} sx={{ marginBottom:10 }} onClick={() => setSelected(s)}>
           <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-            <Avatar initials={s.initials} size={50} color={s.colorAccent} />
+            <Avatar initials={s.initials || (isAzienda ? '🏢' : '?')} size={50} color={s.colorAccent} />
             <div style={{ flex:1,minWidth:0 }}>
-              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                <span style={{ fontFamily:S,fontSize:18,color:C.text,fontWeight:700 }}>{s.nome}</span>
-                <Tag label={s.ruolo_uniic} color={tcMap[s.tipo]||C.blue} sm />
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:6 }}>
+                <span style={{ fontFamily:S,fontSize:isAzienda?16:18,color:C.text,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1 }}>{cardTitle}</span>
+                <div style={{ display:"flex",gap:4,flexShrink:0 }}>
+                  {isAzienda && <Tag label="Azienda" color={C.gold} sm />}
+                  <Tag label={s.ruolo_uniic} color={tcMap[s.tipo]||C.blue} sm />
+                </div>
               </div>
-              <div style={{ fontSize:12,color:C.muted,fontFamily:F,marginTop:2 }}>{s.impresa_nome}</div>
+              <div style={{ fontSize:12,color:C.muted,fontFamily:F,marginTop:2 }}>{cardSub}</div>
               <div style={{ display:"flex",gap:8,marginTop:5,alignItems:"center" }}>
-                <span style={{ fontSize:11,color:C.faint,fontFamily:F }}>📍 {s.citta}</span>
-                <Tag label={s.impresa_settore} color={s.colorAccent} sm />
+                <span style={{ fontSize:11,color:C.faint,fontFamily:F }}>📍 {s.citta||'—'}</span>
+                {(s.settore||s.impresa_settore) && <Tag label={s.settore||s.impresa_settore} color={s.colorAccent} sm />}
               </div>
             </div>
           </div>
@@ -484,7 +505,7 @@ async function caricaSoci() {
             <button onClick={e=>{e.stopPropagation();setSelected(s);}} style={{ flex:2,background:C.alt,border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"7px",fontFamily:F,fontSize:11,cursor:"pointer" }}>Vedi profilo →</button>
           </div>
         </Box>
-      ))}
+      );})}
     </div>
   );
 }
