@@ -20,14 +20,15 @@ Permette ai soci di accedere al network, eventi, convenzioni, newsletter e podca
 
 ## Struttura app (sezioni principali in App.jsx)
 1. **LoginScreen** — autenticazione Supabase Auth, con toggle show/hide password
-2. **HomeSection** — dashboard con statistiche e accesso rapido
-3. **SociSection** — elenco soci con ricerca/filtri, profilo dettagliato
-4. **EventiSection** — lista eventi, scheda evento (EvScheda), lista iscritti (EvIscritti)
-5. **ConvenzioniSection** — convenzioni attive, proposta nuova convenzione
-6. **NewsletterSection** — articoli per categoria
-7. **PodcastSection** — player episodi
-8. **AccountSection** — profilo utente loggato, modifica dati
-9. **AdminPanel** — CRUD completo per Soci, Eventi, Convenzioni, Articoli, Podcast (solo jj@suncapital.it)
+2. **RegistrationScreen** — form richiesta iscrizione pre-login (nome, cognome, email, telefono, citta, nazionalita, data nascita, azienda, ruolo, settore, messaggio). Inserisce in `richieste_iscrizione` con stato `pending`
+3. **HomeSection** — dashboard con statistiche e accesso rapido
+4. **SociSection** — elenco soci con ricerca/filtri, profilo dettagliato
+5. **EventiSection** — lista eventi, scheda evento (EvScheda), lista iscritti (EvIscritti)
+6. **ConvenzioniSection** — convenzioni attive con card per categoria, dettaglio partner, form "Proponi una convenzione"
+7. **NewsletterSection** — articoli per categoria + tab "Digest IT-CN" con weekly digest bilingue
+8. **PodcastSection** — player episodi
+9. **AccountSection** — profilo utente loggato, modifica dati
+10. **AdminPanel** — CRUD completo per Soci, Eventi, Convenzioni, Articoli, Podcast, Richieste Iscrizione, News Digest (solo jj@suncapital.it)
 
 ## Tabelle Supabase
 
@@ -36,83 +37,61 @@ Colonne confermate presenti:
 ```
 id, user_id, nome, cognome, email, telefono, citta, nazionalita,
 data_nascita (date), azienda, ruolo_azienda, settore, sito_web,
-stato_civile, num_figli, hobby (text[] — gestito come stringa nell'app),
+stato_civile, num_figli, hobby (text[]),
 whatsapp, wechat, tipo (direttivo/ordinario/presidente/presidente_onorario),
-ruolo_uniic, ruolo_commento, anno_iscritto, attivo
+ruolo_uniic, ruolo_commento, anno_iscritto, attivo,
+codice_fiscale, partita_iva, indirizzo, provincia, cap, sesso,
+tipo_socio ('individuo' o 'azienda'), ragione_sociale, regione,
+data_iscrizione (date), ultima_tessera, ultimo_pagamento
 ```
+**NOTA:** 160 soci importati da AssoFacile (aprile 2026). Le aziende (65) hanno ragione_sociale ma NON nome/cognome. Gli individui (112) hanno nome+cognome. Il campo `tipo_socio` distingue i due tipi.
 
-### Altre tabelle esistenti
-`eventi`, `convenzioni`, `articoli`, `episodi`, `push_subscriptions`
+### Tabella `eventi`
+3 eventi reali: Gala Annuale 2026 (18 marzo), Forum UNIIC 2026, Cena Sociale UNIIC 2026.
 
-### Nuove tabelle in sviluppo (aprile 2026)
-- `richieste_iscrizione` — flusso registrazione nuovo utente con approvazione admin (Binario B)
-- `news_digest` — weekly digest automatico news Italia-Cina bilingue (Binario C)
+### Tabella `convenzioni`
+Arricchita con: partner, descrizione_partner, beneficio, sconto, codice_convenzione, contatto_nome, contatto_email, contatto_telefono, indirizzo, citta, sito_web, logo_url, data_inizio, data_fine, attiva, note_interne, created_at. 10 partner reali inseriti.
+
+### Tabella `richieste_iscrizione`
+Flusso registrazione nuovo utente. Campi: nome, cognome, email (unique), telefono, citta, nazionalita, data_nascita, azienda, ruolo_azienda, settore, messaggio, stato (pending/approved/rejected), motivo_rifiuto, created_at, reviewed_at, reviewed_by.
+
+### Tabella `news_digest`
+Weekly digest bilingue IT-CN. Campi: titolo_it, titolo_cn, riassunto_it, riassunto_cn, fonte, url_originale, categoria, settimana_rif, importanza (1-5), pubblicato. 7 articoli esempio. Edge Function skeleton da collegare a NewsAPI + Anthropic.
+
+### Tabella `proposte_convenzioni`
+Proposte soci per nuove convenzioni. Campi: nome_partner, tipo_servizio, contatto, note, proposto_da, stato, created_at.
+
+### Altre tabelle
+`articoli`, `episodi`, `push_subscriptions`
 
 ## Logica ruoli
 - **Admin** = solo jj@suncapital.it (NON basato sul campo "tipo")
-- **Tutti i soci** vedono tutti i campi del profilo (nessuna restrizione visibilità al momento)
-- Solo admin vede: export, comunicazione, badge gestione, cambio ruolo, promuovi
+- **Tutti i soci** vedono tutti i campi del profilo
+- Solo admin vede: export, comunicazione, badge gestione, cambio ruolo, promuovi, richieste iscrizione, gestione digest
 
-## Funzionalità completate ✅
+## Funzionalita completate
 - Login/logout con Supabase Auth
-- Splash screen con logo UNIIC (/logo-uniic.png)
+- Registrazione nuovo utente con form + approvazione admin + badge notifica pending
+- Splash screen con logo UNIIC
 - Profilo utente pre-caricato e salvabile
-- Elenco soci da DB con ricerca e filtri
+- Elenco soci da DB con ricerca e filtri (160 soci reali)
 - Profilo socio con tab Info/Impresa/Famiglia/Storico
-- Pulsanti WhatsApp (wa.me/), WeChat (weixin://), Email (mailto:), Telefono (tel:)
-- Admin: cambio ruolo socio con dropdown + campo commento ruolo
-- Eventi con iscrizione/annullamento iscrizione
+- Pulsanti WhatsApp, WeChat, Email, Telefono
+- Admin: cambio ruolo socio con dropdown
+- Eventi con iscrizione/annullamento (3 eventi reali)
 - EvIscritti admin: export CSV, comunicazione, badge stato, ospiti, pagamento, promuovi
+- Convenzioni: 10 partner reali, card per categoria, dettaglio, form proposta
+- Weekly digest news IT-CN: vista settimanale, card, toggle lingua, filtro categoria, vista dettaglio, admin CRUD
 - Admin Panel CRUD completo per tutte le sezioni
-- Push notifications (VAPID configurato, Edge Function su Supabase — da testare end-to-end)
+- Push notifications parziali (VAPID configurato, Edge Function deployata)
 
-## Funzionalità da completare 🔲
-- Email comunicazione reale (configurare Resend come provider SMTP su Supabase)
-- Push notifications — verificare delivery su dispositivi reali
-- Hobby — in futuro lista con checkbox multiple invece di testo libero
-- Convenzioni — logica attivazione con codice/link
-- Newsletter — editor rich text per admin
-- Podcast — upload audio diretto
-
-## Sviluppo parallelo in corso (aprile 2026)
-⚠️ ATTENZIONE: lo sviluppo è organizzato in 4 binari paralleli. Ogni binario deve lavorare SOLO sui propri file/tabelle per evitare conflitti di merge.
-
-### Binario A — Dati reali (soci + eventi)
-- **Scope:** script di import, tabella `soci`, tabella `eventi`, Admin Panel
-- **File:** può toccare App.jsx solo per fix legati al display dei dati importati
-- **Supabase:** tabelle `soci`, `eventi`, `iscrizioni_eventi`
-
-### Binario B — Registrazione nuovo utente
-- **Scope:** nuova tabella `richieste_iscrizione`, nuovo componente RegistrationScreen, sezione approvazione in AdminPanel
-- **File:** crea nuovi componenti, aggiunge sezione in AdminPanel
-- **Supabase:** nuova tabella `richieste_iscrizione`, nuove RLS policies
-
-### Binario C — Weekly digest news Italia-Cina
-- **Scope:** nuova tabella `news_digest`, Supabase Edge Function schedulata, UI in NewsletterSection
-- **File:** modifica NewsletterSection, crea Edge Function
-- **Supabase:** nuova tabella `news_digest`, Edge Function `weekly-news-digest`
-
-### Binario D — Convenzioni
-- **Scope:** arricchimento tabella `convenzioni`, UI ConvenzioniSection, dati reali
-- **File:** modifica ConvenzioniSection, Admin Panel sezione convenzioni
-- **Supabase:** tabella `convenzioni`
-
-## Dati reali disponibili (analisi aprile 2026)
-
-### Soci (da AssoFacile export)
-- **SOCI_ISCRITTI_UNIIC.xlsx:** 177 record reali (65 AZIENDA + 112 INDIVIDUO), 164 con email
-- **STORICO_SOCI_UNIIC.xlsx:** 265 soci storici (69 AZIENDA + 196 INDIVIDUO)
-- Colonne disponibili: TIPO, CODICE FISCALE, P.IVA, COGNOME, NOME, RAGIONE SOCIALE, DATA ISCRIZIONE, INDIRIZZO, COMUNE, CAP, PROVINCIA, DATA NASCITA, SESSO, CELLULARE, EMAIL, ULTIMA TESSERA, ULTIMO PAGAMENTO
-- Due tipi: INDIVIDUO (ha nome/cognome, data nascita) e AZIENDA (ha ragione sociale, P.IVA)
-- La tabella `soci` attuale è strutturata per persone; le aziende associate andranno mappate (ragione sociale → azienda)
-
-### Eventi
-- **Gala 2026** (18 marzo, joint UNIIC-ICCF): 238 invitati con nome, ruolo, azienda, tavolo assegnato
-- **Forum 2026:** ~96 partecipanti (nome + contatto + n. accompagnatori)
-- **Cena UNIIC:** ~84 partecipanti (nome + n. accompagnatori)
-
-### Convenzioni (dal Programma Presidenza)
-Partner già identificati: Auxologico, CDI, Vittoria Assicurazioni, Allianz, Banca Sella, Confcommercio Milano, SumUp, Rapisardi IP, Revolut Business, Fineco, + agenzia comunicazione da trovare
+## Funzionalita da completare
+- Fix visualizzazione card soci (aziende mostrano vuoto, serve mostrare ragione_sociale)
+- Push notifications end-to-end su dispositivi reali
+- Weekly digest — collegare NewsAPI + Anthropic API
+- Email comunicazione reale (Resend SMTP)
+- Hobby con checkbox multiple
+- Pulizia dati soci importati
 
 ## Workflow deployment (IMPORTANTE)
 Claude Code deve sempre concludere con:
@@ -126,7 +105,7 @@ git push
 **MAI aprire PR su GitHub** — merge diretto su master.
 Vercel rideploya automaticamente entro 30 secondi dal push.
 
-## Variabili d'ambiente (in .env e su Vercel)
+## Variabili d'ambiente
 ```
 VITE_SUPABASE_URL=https://atltrjhnkklnkgwscsuy.supabase.co
 VITE_SUPABASE_ANON_KEY=[chiave anon]

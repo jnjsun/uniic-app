@@ -6,7 +6,7 @@ Lezioni apprese nelle sessioni di sviluppo per evitare di ripetere gli stessi er
 
 ## Git & Deployment
 
-### ✅ Workflow corretto
+### Workflow corretto
 ```bash
 git checkout master
 git merge claude/[nome-branch]
@@ -14,13 +14,13 @@ git push
 ```
 Vercel rideploya automaticamente entro 30 secondi.
 
-### ❌ Errori comuni
-- **Non rispondere "sì" alla domanda "Apro PR su GitHub?"** di Claude Code — rispondere sempre NO
+### Errori comuni
+- **Non rispondere "si" alla domanda "Apro PR su GitHub?"** di Claude Code — rispondere sempre NO
 - **Non fare `git pull` aspettandosi modifiche** se Claude Code non ha pushato su GitHub ma solo in locale
 - **L'editor vim si apre durante merge non-fast-forward** — uscire con `:wq` + Invio, oppure Shift+Z+Z
-- Quando Claude Code non ha `gh` CLI installato, il merge va fatto manualmente in VS Code
+- Quando Claude Code non ha `gh` CLI installato, il merge va fatto manualmente
 
-### 💡 Regola finale per ogni brief a Claude Code
+### Regola finale per ogni brief a Claude Code
 Aggiungere SEMPRE in fondo:
 ```
 Dopo le modifiche fai:
@@ -34,88 +34,112 @@ Senza aprire PR su GitHub.
 
 ---
 
-## Sviluppo Parallelo (aprile 2026)
+## Sviluppo Parallelo
 
-### ⚠️ Regole per evitare conflitti tra binari
-Lo sviluppo procede su 4 binari paralleli (A: dati reali, B: registrazione utente, C: news digest, D: convenzioni). Regole:
+### Regole per evitare conflitti tra binari
+1. **Ogni binario lavora SOLO sui propri file/tabelle** — vedi CLAUDE.md
+2. **Nessun binario modifica App.jsx in modo strutturale** — solo aggiunte puntuali
+3. **Merge su master uno alla volta** — se conflitto, il secondo fa `git pull` prima
+4. **Nuove tabelle Supabase: ogni binario crea solo le proprie**
+5. **Testare SEMPRE dopo il merge** su uniic-app.vercel.app
 
-1. **Ogni binario lavora SOLO sui propri file/tabelle** — vedi CLAUDE.md sezione "Sviluppo parallelo"
-2. **Nessun binario modifica App.jsx in modo strutturale** — solo aggiunte puntuali e non sovrapposte
-3. **Merge su master uno alla volta** — se c'è conflitto, il secondo binario fa `git pull` prima di mergiare
-4. **Nuove tabelle Supabase: ogni binario crea solo le proprie** — non modificare tabelle di altri binari
-5. **Testare SEMPRE dopo il merge** che l'app carichi correttamente su uniic-app.vercel.app
+### Conflitti di merge (lezione aprile 2026)
+Se due binari modificano App.jsx e il merge da conflitto:
+1. `git merge --abort` per annullare
+2. Aprire una nuova sessione Claude Code
+3. Dirgli di leggere le modifiche dal branch e applicarle manualmente su master
+4. Claude Code fa il diff, integra, committa e pusha
+**NON tentare di risolvere manualmente i conflitti** — usare Claude Code.
+
+### Stato bloccato da conflitto
+Se git si blocca con "unmerged files":
+```
+git reset --hard HEAD
+git checkout master
+git pull
+```
+Questo forza il reset allo stato pulito.
 
 ---
 
 ## Supabase
 
 ### Colonne mancanti
-Quando l'app dà errore tipo `"Could not find the 'X' column"`:
-1. Vai su Supabase → SQL Editor
+Quando l'app da errore tipo `"Could not find the 'X' column"`:
+1. Vai su Supabase > SQL Editor
 2. `alter table soci add column if not exists X tipo;`
 3. Aggiorna il payload di salvataggio in App.jsx
 
-### Hobby è un array (text[])
-La colonna `hobby` è `text[]` in Supabase. Nell'app va gestita così:
+### Hobby e un array (text[])
+La colonna `hobby` e `text[]` in Supabase:
 - **In salvataggio:** `hobby: formData.hobby ? [formData.hobby] : []`
 - **In lettura:** `hobby: Array.isArray(data.hobby) ? data.hobby.join(", ") : data.hobby`
-Se non gestita correttamente dà errore `"malformed array literal"`.
 
 ### Pre-caricamento form
-Quando un form salva ma cancella i dati esistenti, il problema è che i campi non vengono pre-popolati all'apertura. Soluzione: caricare i dati del socio da Supabase all'apertura della sezione e inizializzare lo stato del form con quei valori.
+Quando un form salva ma cancella i dati esistenti, caricare i dati dal DB all'apertura della sezione.
 
 ### RLS (Row Level Security)
-Assicurarsi che le policy RLS siano attive sia per il ruolo `anon` che per `authenticated` sulle tabelle usate dall'app.
+Policy RLS attive sia per `anon` che per `authenticated` sulle tabelle usate.
 
-### Import massivo soci
-- I dati AssoFacile hanno due tipi: INDIVIDUO (persone) e AZIENDA (società)
-- Per le AZIENDA: mappare ragione_sociale → campo `azienda` nella tabella soci, usare email del referente
+### SQL con apostrofi (lezione aprile 2026)
+Negli INSERT SQL, gli apostrofi nel testo italiano causano errori. Soluzioni:
+- Raddoppiare l'apostrofo: `l''interscambio` invece di `l'interscambio`
+- Oppure evitare apostrofi nel testo
+- Fare INSERT uno alla volta invece di blocchi multi-riga (piu facile debuggare)
+
+### Colonne NOT NULL (lezione aprile 2026)
+Se una tabella ha colonne NOT NULL e il tuo INSERT non le riempie, ottieni errore. Prima di importare dati:
+- Verificare la struttura della tabella con `\d nometabella` o dalla UI di Supabase
+- Usare `alter table X alter column Y drop not null` se necessario
+
+### Import massivo soci (lezione aprile 2026)
+- I dati AssoFacile hanno due tipi: INDIVIDUO (persone) e AZIENDA (societa)
+- Le AZIENDA non hanno nome/cognome, solo ragione_sociale
 - Usare Supabase Admin API (service_role key) per creare utenti Auth in bulk
-- Password temporanea da comunicare ai soci per il primo accesso
+- Lo script di import gira in LOCALE, non committato nel repo
+- Il file .env con la service_role key non va mai nel repo
+- Su Windows: attenzione che Notepad non salvi come `.env.txt`
 
 ---
 
 ## React / App.jsx
 
 ### Admin check
-L'admin è identificato SOLO per email `jj@suncapital.it`, NON per il campo `tipo` nel database.
+L'admin e identificato SOLO per email `jj@suncapital.it`, NON per il campo `tipo` nel database.
 ```js
 const isAdmin = session?.user?.email === 'jj@suncapital.it'
 ```
 
-### Visibilità campi soci
-Al momento TUTTI i campi sono visibili a tutti i soci — la funzione `see()` è stata rimossa e sostituita con `see = () => true`. Non reintrodurre restrizioni senza istruzioni esplicite.
+### Visibilita campi soci
+Tutti i campi visibili a tutti. Non reintrodurre restrizioni senza istruzioni esplicite.
+
+### Card soci — tipo_socio (da fixare)
+Le card devono mostrare:
+- Se `tipo_socio === 'azienda'`: mostrare `ragione_sociale` come titolo
+- Se individuo: mostrare `nome + " " + cognome`
+- La ricerca deve funzionare anche su `ragione_sociale`
 
 ### Pulsanti contatto socio
-I pulsanti WhatsApp e WeChat appaiono SOLO se il campo non è null e non è stringa vuota:
-```js
-{socio.whatsapp && <button onClick={() => window.open(`https://wa.me/${socio.whatsapp}`)}>WhatsApp</button>}
-{socio.wechat && <button onClick={() => window.open(`weixin://dl/chat?${socio.wechat}`)}>WeChat</button>}
-```
-Email → `mailto:` / Telefono → `tel:`
+WhatsApp e WeChat appaiono SOLO se il campo non e null e non e stringa vuota.
 
 ---
 
-## UX / Funzionalità
+## UX / Funzionalita
 
 ### Comunicazione iscritti
-Il pulsante "Invia comunicazione" in EvIscritti è attualmente una simulazione — i messaggi non arrivano realmente. Manca la configurazione di un provider email (Resend) su Supabase. Da implementare nella prossima fase.
+Il pulsante "Invia comunicazione" in EvIscritti e una simulazione. Manca Resend SMTP.
 
 ### Push notifications
-VAPID keys configurate, Edge Function `send-push-notification` deployata su Supabase, tabella `push_subscriptions` presente. Ma la delivery end-to-end su dispositivi reali non è stata verificata. Da testare.
+VAPID keys configurate, Edge Function deployata, tabella `push_subscriptions` presente. Delivery end-to-end da verificare.
 
 ### Iscrizione eventi
-- Bottone visibile a tutti incluso admin
-- Toggle: "Iscriviti" → "Iscritto ✓" (cliccabile per annullare con conferma)
-- Annullamento rimuove l'iscrizione da Supabase
+Toggle: "Iscriviti" / "Iscritto" con annullamento su conferma.
 
----
+### Registrazione nuovo utente (completata aprile 2026)
+Form pre-login > inserisce in `richieste_iscrizione` > admin approva/rifiuta > creazione account Auth automatica.
 
-## Prossimi step prioritari
+### Weekly digest news (completata aprile 2026)
+Tab in NewsletterSection, toggle lingua IT/CN, filtro categoria, vista dettaglio articolo. Edge Function skeleton da collegare a NewsAPI + Anthropic.
 
-1. **Binario A** — Import massivo soci da Excel + caricamento eventi reali
-2. **Binario B** — Flusso registrazione nuovo utente con approvazione direttivo
-3. **Binario C** — Weekly digest news Italia-Cina bilingue automatico
-4. **Binario D** — Convenzioni: arricchimento schema + caricamento dati reali
-5. **Resend email** — configurare provider SMTP su Supabase per comunicazioni reali
-6. **Push notifications** — test delivery su telefono reale
+### Convenzioni (completata aprile 2026)
+10 partner reali, card per categoria, dettaglio con contatti, form proposta nuova convenzione per i soci.
