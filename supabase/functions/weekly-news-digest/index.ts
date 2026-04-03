@@ -1,22 +1,20 @@
 // Edge Function: weekly-news-digest
 // Schedulata ogni lunedì alle 7:00 UTC via pg_cron
-// 1. Chiama NewsAPI con keyword specifiche IT-CN in inglese e italiano
-// 2. Filtra per whitelist fonti di qualità
-// 3. Chiama Anthropic API per valutare rilevanza (scarta articoli non pertinenti)
-// 4. Chiama Anthropic API per titolo e riassunto bilingue IT/CN
-// 5. Salva in tabella news_digest con pubblicato = false (bozze per approvazione admin)
+// 1. Fetch articoli via Google News RSS (gratuito, no API key)
+// 2. Filtro rilevanza con Anthropic (scarta articoli non pertinenti)
+// 3. Genera titolo e riassunto bilingue IT/CN con Anthropic
+// 4. Salva in tabella news_digest con pubblicato = false (bozze per approvazione admin)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 // --- Tipi ---
 
-interface NewsAPIArticle {
+interface RSSArticle {
   title: string
-  description: string | null
-  url: string
-  source: { name: string }
-  publishedAt: string
+  link: string
+  source: string
+  pubDate: Date
 }
 
 interface DigestEntry {
@@ -34,33 +32,15 @@ interface DigestEntry {
 
 // --- Costanti ---
 
-const KEYWORDS_EN = [
-  "Italy China trade",
-  "Italy China investment",
-  "Italian Chinese business",
-  "EU China trade Italy",
-  "Chinese entrepreneurs Italy",
-  "Made in Italy China",
-]
-
-const KEYWORDS_IT = [
-  "commercio Italia Cina",
-  "imprenditori cinesi Italia",
-  "investimenti Italia Cina",
-  "Chinatown Milano",
-]
-
-const SOURCE_WHITELIST: string[] = [
-  // Italiane
-  "il sole 24 ore", "ansa", "milano finanza", "corriere della sera",
-  "la repubblica", "agi", "adnkronos", "il giornale", "avvenire",
-  // Internazionali
-  "south china morning post", "financial times", "reuters", "bloomberg",
-  "nikkei asia", "the economist", "bbc", "cnn", "al jazeera",
-  // Cinesi in inglese
-  "xinhua", "cgtn", "global times", "caixin", "yicai",
-  // Specializzate
-  "china briefing", "the diplomat", "asia times", "euobserver",
+const RSS_FEEDS = [
+  "https://news.google.com/rss/search?q=Italia+Cina+commercio&hl=it&gl=IT&ceid=IT:it",
+  "https://news.google.com/rss/search?q=imprenditori+cinesi+Italia&hl=it&gl=IT&ceid=IT:it",
+  "https://news.google.com/rss/search?q=Made+in+Italy+Cina&hl=it&gl=IT&ceid=IT:it",
+  "https://news.google.com/rss/search?q=Italy+China+trade&hl=en&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=Italy+China+investment&hl=en&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=EU+China+Italy&hl=en&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=comunità+cinese+Italia&hl=it&gl=IT&ceid=IT:it",
+  "https://news.google.com/rss/search?q=investimenti+Italia+Cina&hl=it&gl=IT&ceid=IT:it",
 ]
 
 const CATEGORIES_MAP: Record<string, string> = {
@@ -70,26 +50,33 @@ const CATEGORIES_MAP: Record<string, string> = {
   finance: "business",
   commercio: "business",
   investiment: "business",
+  export: "business",
+  import: "business",
   technology: "innovazione",
   tech: "innovazione",
   innovation: "innovazione",
   startup: "innovazione",
+  innovazione: "innovazione",
+  digitale: "innovazione",
   politics: "politica",
   policy: "politica",
   diplomacy: "politica",
   government: "politica",
   politica: "politica",
   diplomazia: "politica",
+  governo: "politica",
   geopolitics: "geopolitica",
   sanctions: "geopolitica",
   military: "geopolitica",
   defense: "geopolitica",
+  sanzioni: "geopolitica",
   culture: "cultura",
   education: "cultura",
   sport: "cultura",
   art: "cultura",
   food: "cultura",
   cultura: "cultura",
+  turismo: "cultura",
 }
 
 // --- Funzioni helper ---
@@ -104,55 +91,81 @@ function getCurrentMonday(): string {
   return monday.toISOString().split("T")[0]
 }
 
-/** Data di 7 giorni fa in formato YYYY-MM-DD */
-function oneWeekAgo(): string {
+/** Data di 7 giorni fa */
+function oneWeekAgoDate(): Date {
   const d = new Date()
   d.setUTCDate(d.getUTCDate() - 7)
-  return d.toISOString().split("T")[0]
+  return d
 }
 
-/** Chiama NewsAPI per una keyword e lingua, ritorna articoli */
-async function fetchNewsAPI(apiKey: string, keyword: string, fromDate: string, language: string): Promise<NewsAPIArticle[]> {
-  const params = new URLSearchParams({
-    q: keyword,
-    from: fromDate,
-    sortBy: "relevancy",
-    language,
-    pageSize: "30",
-    apiKey,
-  })
+/** Fetch e parse di un feed Google News RSS */
+async function fetchGoogleNewsRSS(feedUrl: string): Promise<RSSArticle[]> {
+  try {
+    const resp = await fetch(feedUrl, {
+      headers: { "User-Agent": "UNIIC-Digest-Bot/1.0" },
+    })
+    if (!resp.ok) {
+      console.error(`RSS fetch error for ${feedUrl}: ${resp.status}`)
+      return []
+    }
 
-  const resp = await fetch(`https://newsapi.org/v2/everything?${params}`)
-  if (!resp.ok) {
-    console.error(`NewsAPI error for "${keyword}" (${language}): ${resp.status} ${resp.statusText}`)
+    const xml = await resp.text()
+    const articles: RSSArticle[] = []
+
+    // Parse XML con regex — ogni <item> contiene title, link, source, pubDate
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g
+    let match: RegExpExecArray | null
+
+    while ((match = itemRegex.exec(xml)) !== null) {
+      const itemXml = match[1]
+
+      const title = extractTag(itemXml, "title")
+      const link = extractTag(itemXml, "link")
+      const pubDateStr = extractTag(itemXml, "pubDate")
+      const source = extractTagAttr(itemXml, "source") || extractTag(itemXml, "source") || ""
+
+      if (!title || !link) continue
+
+      const pubDate = pubDateStr ? new Date(pubDateStr) : new Date()
+
+      articles.push({ title, link, source, pubDate })
+    }
+
+    return articles
+  } catch (err) {
+    console.error(`RSS fetch exception for ${feedUrl}:`, err)
     return []
   }
-
-  const data = await resp.json()
-  return data.articles || []
 }
 
-/** Deduplica articoli per URL */
-function deduplicateArticles(articles: NewsAPIArticle[]): NewsAPIArticle[] {
+/** Estrae il contenuto testuale di un tag XML */
+function extractTag(xml: string, tag: string): string {
+  // Gestisce sia <tag>testo</tag> che <tag><![CDATA[testo]]></tag>
+  const regex = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${tag}>`)
+  const m = regex.exec(xml)
+  return m ? m[1].trim() : ""
+}
+
+/** Estrae il contenuto testuale dal body di un tag con attributi (es. <source url="...">Nome</source>) */
+function extractTagAttr(xml: string, tag: string): string {
+  const regex = new RegExp(`<${tag}[^>]+>([^<]+)<\\/${tag}>`)
+  const m = regex.exec(xml)
+  return m ? m[1].trim() : ""
+}
+
+/** Deduplica articoli per link (URL) */
+function deduplicateArticles(articles: RSSArticle[]): RSSArticle[] {
   const seen = new Set<string>()
   return articles.filter((a) => {
-    if (!a.url || seen.has(a.url)) return false
-    seen.add(a.url)
+    if (!a.link || seen.has(a.link)) return false
+    seen.add(a.link)
     return true
   })
 }
 
-/** Filtra articoli per whitelist fonti */
-function filterBySource(articles: NewsAPIArticle[]): NewsAPIArticle[] {
-  return articles.filter((a) => {
-    const sourceName = (a.source?.name || "").toLowerCase()
-    return SOURCE_WHITELIST.some((allowed) => sourceName.includes(allowed))
-  })
-}
-
-/** Classifica un articolo in una categoria basandosi su titolo e descrizione */
-function classifyCategory(title: string, description: string | null): string {
-  const text = `${title} ${description || ""}`.toLowerCase()
+/** Classifica un articolo in una categoria basandosi sul titolo */
+function classifyCategory(title: string): string {
+  const text = title.toLowerCase()
   for (const [keyword, cat] of Object.entries(CATEGORIES_MAP)) {
     if (text.includes(keyword)) return cat
   }
@@ -160,12 +173,11 @@ function classifyCategory(title: string, description: string | null): string {
 }
 
 /** Chiama Anthropic per valutare la rilevanza di un articolo */
-async function checkRelevance(apiKey: string, article: NewsAPIArticle): Promise<boolean> {
-  const prompt = `Questo articolo riguarda DIRETTAMENTE le relazioni Italia-Cina, gli scambi commerciali, gli investimenti, la comunità cinese in Italia, o la diplomazia Italia/UE-Cina?
+async function checkRelevance(apiKey: string, article: RSSArticle): Promise<boolean> {
+  const prompt = `Questo articolo riguarda la Cina E ha potenziale rilevanza per imprenditori o la comunità cinese in Italia/Europa?
 
 Titolo: ${article.title}
-Descrizione: ${article.description || "N/A"}
-Fonte: ${article.source.name}
+Fonte: ${article.source}
 
 Rispondi SOLO "sì" o "no".`
 
@@ -191,22 +203,21 @@ Rispondi SOLO "sì" o "no".`
     return answer.startsWith("sì") || answer.startsWith("si") || answer === "yes"
   } catch (err) {
     console.error(`Relevance check error for "${article.title}":`, err)
-    return true // in caso di errore, tieni l'articolo
+    return true
   }
 }
 
 /** Chiama Anthropic API per generare titolo e riassunto bilingue */
 async function generateBilingualSummary(
   apiKey: string,
-  article: NewsAPIArticle
+  article: RSSArticle
 ): Promise<{ titolo_it: string; titolo_cn: string; riassunto_it: string; riassunto_cn: string } | null> {
   const prompt = `Sei un giornalista esperto di relazioni Italia-Cina. Analizza questo articolo e genera un riassunto focalizzato sull'impatto pratico per imprenditori italo-cinesi. Evita riassunti generici.
 
 ARTICOLO:
 Titolo: ${article.title}
-Descrizione: ${article.description || "N/A"}
-Fonte: ${article.source.name}
-URL: ${article.url}
+Fonte: ${article.source}
+URL: ${article.link}
 
 Rispondi SOLO con un JSON valido (senza markdown, senza backtick) con questa struttura esatta:
 {
@@ -256,14 +267,13 @@ Rispondi SOLO con un JSON valido (senza markdown, senza backtick) con questa str
 
 serve(async (req) => {
   try {
-    const newsApiKey = Deno.env.get("NEWSAPI_KEY")
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY")
     const supabaseUrl = Deno.env.get("SUPABASE_URL")
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
 
-    if (!newsApiKey || !anthropicKey) {
+    if (!anthropicKey) {
       return new Response(
-        JSON.stringify({ error: "Missing NEWSAPI_KEY or ANTHROPIC_API_KEY secrets" }),
+        JSON.stringify({ error: "Missing ANTHROPIC_API_KEY secret" }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       )
     }
@@ -276,46 +286,42 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    const fromDate = oneWeekAgo()
+    const cutoffDate = oneWeekAgoDate()
     const settimanaRif = getCurrentMonday()
 
-    console.log(`Fetching news from ${fromDate}, settimana_rif: ${settimanaRif}`)
+    console.log(`Fetching Google News RSS, cutoff: ${cutoffDate.toISOString()}, settimana_rif: ${settimanaRif}`)
 
-    // 1. Fetch articoli da NewsAPI — keyword EN e IT separate
-    const allArticles: NewsAPIArticle[] = []
+    // 1. Fetch articoli da tutti i feed Google News RSS
+    const allArticles: RSSArticle[] = []
 
-    for (const keyword of KEYWORDS_EN) {
-      const articles = await fetchNewsAPI(newsApiKey, keyword, fromDate, "en")
+    for (const feedUrl of RSS_FEEDS) {
+      const articles = await fetchGoogleNewsRSS(feedUrl)
       allArticles.push(...articles)
-      console.log(`EN "${keyword}": ${articles.length} articoli`)
+      console.log(`RSS "${feedUrl.split('q=')[1]?.split('&')[0]}": ${articles.length} articoli`)
     }
 
-    for (const keyword of KEYWORDS_IT) {
-      const articles = await fetchNewsAPI(newsApiKey, keyword, fromDate, "it")
-      allArticles.push(...articles)
-      console.log(`IT "${keyword}": ${articles.length} articoli`)
-    }
+    console.log(`Articoli totali dal RSS: ${allArticles.length}`)
 
-    // 2. Deduplica
-    const unique = deduplicateArticles(allArticles)
-    console.log(`Articoli unici totali: ${unique.length}`)
+    // 2. Filtra solo articoli dell'ultima settimana
+    const recentArticles = allArticles.filter((a) => a.pubDate >= cutoffDate)
+    console.log(`Articoli ultima settimana: ${recentArticles.length}`)
 
-    // 3. Filtra per whitelist fonti
-    const fromQualitySources = filterBySource(unique)
-    console.log(`Articoli da fonti di qualità: ${fromQualitySources.length} (scartati ${unique.length - fromQualitySources.length})`)
+    // 3. Deduplica
+    const unique = deduplicateArticles(recentArticles)
+    console.log(`Articoli unici: ${unique.length}`)
 
-    // 4. Prendi top 30 per il pool di filtraggio
-    const pool = fromQualitySources.slice(0, 30)
+    // 4. Prendi top 30 per il pool di filtraggio rilevanza
+    const pool = unique.slice(0, 30)
 
     if (pool.length === 0) {
       return new Response(
-        JSON.stringify({ status: "ok", message: "Nessun articolo trovato da fonti di qualità per questa settimana", count: 0 }),
+        JSON.stringify({ status: "ok", message: "Nessun articolo trovato per questa settimana", count: 0 }),
         { headers: { "Content-Type": "application/json" } }
       )
     }
 
-    // 5. Filtro rilevanza con Anthropic — scarta articoli non pertinenti
-    const relevant: NewsAPIArticle[] = []
+    // 5. Filtro rilevanza con Anthropic
+    const relevant: RSSArticle[] = []
     let scartatiRilevanza = 0
     for (const article of pool) {
       const isRelevant = await checkRelevance(anthropicKey, article)
@@ -327,14 +333,14 @@ serve(async (req) => {
         console.log(`✗ Non rilevante: ${article.title}`)
       }
     }
-    console.log(`Articoli rilevanti: ${relevant.length} (scartati rilevanza: ${scartatiRilevanza})`)
+    console.log(`Articoli rilevanti: ${relevant.length} (scartati: ${scartatiRilevanza})`)
 
-    // 6. Seleziona top 20 articoli rilevanti
+    // 6. Seleziona top 20
     const top = relevant.slice(0, 20)
 
     if (top.length === 0) {
       return new Response(
-        JSON.stringify({ status: "ok", message: "Nessun articolo rilevante trovato per questa settimana", count: 0, scartati_fonte: unique.length - fromQualitySources.length, scartati_rilevanza: scartatiRilevanza }),
+        JSON.stringify({ status: "ok", message: "Nessun articolo rilevante trovato", count: 0, pool: pool.length, scartati_rilevanza: scartatiRilevanza }),
         { headers: { "Content-Type": "application/json" } }
       )
     }
@@ -353,9 +359,9 @@ serve(async (req) => {
         titolo_cn: summary.titolo_cn,
         riassunto_it: summary.riassunto_it,
         riassunto_cn: summary.riassunto_cn,
-        fonte: article.source.name,
-        url_originale: article.url,
-        categoria: classifyCategory(article.title, article.description),
+        fonte: article.source,
+        url_originale: article.link,
+        categoria: classifyCategory(article.title),
         settimana_rif: settimanaRif,
         importanza: Math.max(1, Math.ceil(5 - (i * 4) / (top.length - 1 || 1))),
         pubblicato: false,
@@ -381,11 +387,12 @@ serve(async (req) => {
       JSON.stringify({
         status: "ok",
         settimana_rif: settimanaRif,
-        articoli_trovati: unique.length,
-        articoli_fonti_qualita: fromQualitySources.length,
+        fonte: "Google News RSS",
+        articoli_rss_totali: allArticles.length,
+        articoli_ultima_settimana: recentArticles.length,
+        articoli_unici: unique.length,
         articoli_rilevanti: relevant.length,
         articoli_processati: entries.length,
-        scartati_fonte: unique.length - fromQualitySources.length,
         scartati_rilevanza: scartatiRilevanza,
         categorie: [...new Set(entries.map((e) => e.categoria))],
       }),
