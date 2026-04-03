@@ -141,8 +141,19 @@ const EV_TIPI = {
 };
 
 // ─── CONVENZIONI ──────────────────────────────────────────────────────────────
-const CONV_CATEGORIE = ["Tutte","Banca","Assicurazione","Legale","Tech","Hospitality","Salute","F&B","Formazione"];
-const CONV_CITTA = ["Tutte","Milano","Roma","Firenze","Prato","Napoli"];
+const CONV_CATEGORIE = {
+  salute:       { label:"Salute",        color:C.green,  icon:"🏥" },
+  finanza:      { label:"Finanza",       color:C.gold,   icon:"🏦" },
+  assicurazioni:{ label:"Assicurazioni", color:C.blue,   icon:"🛡️" },
+  legale:       { label:"Legale",        color:C.purple, icon:"⚖️" },
+  formazione:   { label:"Formazione",    color:C.orange, icon:"🎓" },
+  tecnologia:   { label:"Tecnologia",    color:C.teal,   icon:"💻" },
+  logistica:    { label:"Logistica",     color:"#8B5E3C",icon:"📦" },
+  ristorazione: { label:"Ristorazione",  color:C.red,    icon:"🍽️" },
+  coworking:    { label:"Coworking",     color:"#5DADE2",icon:"🏢" },
+  altro:        { label:"Altro",         color:C.muted,  icon:"🤝" },
+};
+const CONV_CATEGORIE_KEYS = ["Tutte", ...Object.keys(CONV_CATEGORIE)];
 
 // ─── NEWSLETTER ───────────────────────────────────────────────────────────────
 const NL_CAT = {
@@ -836,222 +847,232 @@ useEffect(() => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // SEZIONE: CONVENZIONI
 // ═══════════════════════════════════════════════════════════════════════════════
-function ConvQR({ codice, colore }) {
-  const cells=useMemo(()=>{const g=[];for(let r=0;r<11;r++){const row=[];for(let c=0;c<11;c++){const e=r<3&&c<3||r<3&&c>7||r>7&&c<3;const inn=r>0&&r<2&&c>0&&c<2||r>0&&r<2&&c>8&&c<10||r>8&&r<10&&c>0&&c<2;row.push(e&&!inn||(!e&&(r+c+codice.length)%3===0));}g.push(row);}return g;},[codice]);
-  return (<div style={{ display:"inline-block",background:"#fff",padding:10,borderRadius:10,border:`3px solid ${colore}` }}>
-    <div style={{ display:"grid",gridTemplateColumns:"repeat(11,10px)",gap:1 }}>
-      {cells.flat().map((on,i) => <div key={i} style={{ width:10,height:10,background:on?colore:"#fff",borderRadius:on?2:0 }} />)}
-    </div>
-    <div style={{ textAlign:"center",marginTop:6,fontSize:9,color:C.faint,fontFamily:F,letterSpacing:.5 }}>{codice}</div>
-  </div>);
-}
-function ConvScheda({ conv, role, preferiti, onToggleFav, onBack }) {
-  const [showQR,setShowQR]=useState(false); const [copiato,setCopiato]=useState(false);
-  const isFav=preferiti.includes(conv.id);
-  const isAcc=conv.accesso==="tutti"||(conv.accesso==="sostenitore"&&["sostenitore","direttivo"].includes(role))||(conv.accesso==="direttivo"&&role==="direttivo");
-  const giorni=Math.ceil((new Date(conv.scadenza.split("/").reverse().join("-"))-new Date("2026-03-27"))/(1000*60*60*24));
-  const inScad=giorni<=30&&giorni>0;
-  const copiaCodice=()=>{setCopiato(true);setTimeout(()=>setCopiato(false),2000);};
+function ConvScheda({ conv, isAdmin, onBack }) {
+  const [copiato,setCopiato]=useState(false);
+  const cat = CONV_CATEGORIE[conv.categoria] || CONV_CATEGORIE.altro;
+  const isFutura = conv.data_inizio && new Date(conv.data_inizio) > new Date();
+  const copiaCodice = () => {
+    navigator.clipboard?.writeText(conv.codice_convenzione).catch(() => {});
+    setCopiato(true); setTimeout(() => setCopiato(false), 2000);
+  };
   return (<div>
     <BackBtn onClick={onBack} label="← Tutte le convenzioni" />
-    <div style={{ background:`linear-gradient(135deg,${conv.colore}28,${C.alt})`,border:`1px solid ${conv.colore}44`,borderRadius:16,padding:20,marginBottom:14 }}>
-      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
-        <div style={{ display:"flex",gap:14,alignItems:"center" }}>
-          <div style={{ width:56,height:56,borderRadius:14,background:`${conv.colore}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0 }}>{conv.icon}</div>
-          <div>
-            <h2 style={{ fontFamily:S,fontSize:20,color:C.text,margin:"0 0 6px",lineHeight:1.1 }}>{conv.nome}</h2>
-            <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-              <Tag label={conv.categoria} color={conv.colore} sm /><AccessoBadge accesso={conv.accesso} />
-              {conv.nuova&&<Tag label="Nuova" color={C.green} sm />}
-              {inScad&&<Tag label={`${giorni}gg`} color={C.orange} sm />}
-            </div>
-          </div>
-        </div>
-        <button onClick={() => onToggleFav(conv.id)} style={{ background:"none",border:"none",fontSize:22,cursor:"pointer" }}>{isFav?"❤️":"🤍"}</button>
-      </div>
-      <div style={{ marginTop:14,padding:"10px 14px",background:`${conv.colore}1A`,borderRadius:10,border:`1px solid ${conv.colore}33` }}>
-        <div style={{ fontFamily:S,fontSize:19,color:conv.colore,fontWeight:700 }}>{conv.titolo_breve}</div>
-      </div>
-    </div>
-    {!isAcc&&<Box sx={{ marginBottom:14,borderColor:`${C.gold}44`,background:`${C.gold}08` }}>
-      <div style={{ display:"flex",gap:12,alignItems:"center" }}>
-        <span style={{ fontSize:24 }}>🔒</span>
+    <div style={{ background:`linear-gradient(135deg,${cat.color}28,${C.alt})`,border:`1px solid ${cat.color}44`,borderRadius:16,padding:20,marginBottom:14 }}>
+      <div style={{ display:"flex",gap:14,alignItems:"center" }}>
+        {conv.logo_url
+          ? <img src={conv.logo_url} alt="" style={{ width:56,height:56,borderRadius:14,objectFit:"contain",background:"#fff",padding:4,flexShrink:0 }} />
+          : <div style={{ width:56,height:56,borderRadius:14,background:`${cat.color}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0 }}>{cat.icon}</div>}
         <div>
-          <div style={{ fontFamily:S,fontSize:16,color:C.gold }}>Convenzione riservata</div>
-          <div style={{ fontSize:12,color:C.muted,fontFamily:F,marginTop:3 }}>Disponibile per soci <strong style={{ color:C.gold }}>{conv.accesso==="sostenitore"?"Sostenitore+":"solo Direttivo"}</strong>.</div>
+          <h2 style={{ fontFamily:S,fontSize:20,color:C.text,margin:"0 0 6px",lineHeight:1.1 }}>{conv.partner || conv.nome}</h2>
+          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+            <Tag label={cat.label} color={cat.color} sm />
+            {conv.attiva ? <Tag label="Attiva" color={C.green} sm /> : <Tag label="Non attiva" color={C.red} sm />}
+            {isFutura && <Tag label="In arrivo" color={C.orange} sm />}
+          </div>
         </div>
       </div>
-    </Box>}
-    <Box sx={{ marginBottom:12 }}>
-      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 8px" }}>Descrizione</h4>
-      <p style={{ color:C.muted,fontSize:13,fontFamily:F,lineHeight:1.7,margin:0 }}>{conv.desc}</p>
-    </Box>
-    <Box sx={{ marginBottom:12 }}>
-      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 10px" }}>Condizioni</h4>
-      <p style={{ color:C.muted,fontSize:13,fontFamily:F,lineHeight:1.7,margin:"0 0 12px" }}>{conv.condizioni}</p>
-      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-        <div style={{ fontSize:12,color:C.muted,fontFamily:F }}>📅 Scadenza: <strong style={{ color:inScad?C.orange:C.text }}>{conv.scadenza}</strong></div>
-        <div style={{ fontSize:12,color:C.muted,fontFamily:F }}>📍 {conv.citta}</div>
-      </div>
-    </Box>
-    {isAcc&&<Box sx={{ marginBottom:12,borderColor:`${conv.colore}33` }}>
-      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 14px" }}>Come attivare</h4>
-      {conv.attivazione==="codice"&&<div>
-        <div style={{ fontSize:11,color:C.faint,fontFamily:F,marginBottom:8,letterSpacing:.5 }}>CODICE SCONTO</div>
-        <div style={{ display:"flex",gap:8,alignItems:"center",marginBottom:14 }}>
-          <div style={{ flex:1,background:C.alt,border:`2px dashed ${conv.colore}66`,borderRadius:10,padding:"12px 16px",textAlign:"center" }}>
-            <div style={{ fontFamily:"monospace",fontSize:18,color:conv.colore,fontWeight:700,letterSpacing:2 }}>{conv.codice}</div>
-          </div>
-          <Btn v="ghost" onClick={copiaCodice} sx={{ fontSize:11,padding:"10px 12px",flexShrink:0,borderColor:`${conv.colore}44`,color:conv.colore }}>{copiato?"✓ Copiato":"Copia"}</Btn>
-        </div>
-        <Btn v="ghost" onClick={() => setShowQR(q=>!q)} sx={{ width:"100%",fontSize:11,borderColor:`${conv.colore}33`,color:conv.colore }}>{showQR?"Nascondi QR":"📱 Mostra QR Code"}</Btn>
-        {showQR&&<div style={{ textAlign:"center",marginTop:16 }}>
-          <ConvQR codice={conv.codice} colore={conv.colore} />
-          <div style={{ fontSize:11,color:C.muted,fontFamily:F,marginTop:10 }}>Mostra al partner per attivare la convenzione</div>
-        </div>}
+      {conv.beneficio && conv.beneficio !== "In definizione" && <div style={{ marginTop:14,padding:"10px 14px",background:`${cat.color}1A`,borderRadius:10,border:`1px solid ${cat.color}33` }}>
+        <div style={{ fontFamily:S,fontSize:17,color:cat.color,fontWeight:700 }}>{conv.beneficio}</div>
       </div>}
-      {conv.attivazione==="link"&&<div>
-        <div style={{ fontSize:12,color:C.muted,fontFamily:F,lineHeight:1.6,marginBottom:14 }}>Clicca per accedere alla pagina dedicata ai soci UNIIC.</div>
-        <Btn onClick={() => alert("Apertura link partner…")} sx={{ width:"100%",background:conv.colore,border:"none",color:"#fff" }}>🔗 Vai al sito del partner →</Btn>
-      </div>}
-      {conv.attivazione==="contatto"&&<div>
-        <div style={{ fontSize:12,color:C.muted,fontFamily:F,lineHeight:1.6,marginBottom:14 }}>Contatta il partner citando di essere socio UNIIC.</div>
-        {[[" 📞",conv.contatto_tel,"Chiama"],["✉️",conv.contatto_email,"Email"]].map(([ic,val,lab]) => (
-          <div key={lab} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:C.alt,borderRadius:10,border:`1px solid ${C.border}`,marginBottom:8 }}>
-            <span style={{ fontSize:18 }}>{ic}</span>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:10,color:C.faint,fontFamily:F,marginBottom:2 }}>{lab}</div>
-              <div style={{ fontSize:13,color:C.text,fontFamily:F }}>{val}</div>
-            </div>
-            <button onClick={() => alert(`${lab}: ${val}`)} style={{ background:conv.colore,border:"none",color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:11,fontFamily:F,cursor:"pointer" }}>{ic}</button>
-          </div>
-        ))}
-      </div>}
-    </Box>}
-    <div style={{ display:"flex",gap:10,marginBottom:12 }}>
-      <Box sx={{ flex:1,textAlign:"center",padding:"12px 10px" }}>
-        <div style={{ fontFamily:S,fontSize:28,color:conv.colore,fontWeight:700 }}>{conv.utilizzi}</div>
-        <div style={{ fontSize:11,color:C.faint,fontFamily:F }}>utilizzi totali</div>
-      </Box>
-      <Box sx={{ flex:1,textAlign:"center",padding:"12px 10px" }}>
-        <div style={{ fontFamily:S,fontSize:28,color:C.gold,fontWeight:700 }}>{conv.preferiti}</div>
-        <div style={{ fontSize:11,color:C.faint,fontFamily:F }}>nei preferiti</div>
-      </Box>
     </div>
-    <Btn v={isFav?"danger":"secondary"} onClick={() => onToggleFav(conv.id)} sx={{ width:"100%" }}>{isFav?"❤️ Rimuovi dai preferiti":"🤍 Salva nei preferiti"}</Btn>
+    <Box sx={{ marginBottom:12 }}>
+      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 8px" }}>Il partner</h4>
+      <p style={{ color:C.muted,fontSize:13,fontFamily:F,lineHeight:1.7,margin:0 }}>{conv.descrizione_partner || conv.descrizione || "—"}</p>
+    </Box>
+    {(conv.sconto || (conv.beneficio && conv.beneficio !== "In definizione")) && <Box sx={{ marginBottom:12 }}>
+      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 10px" }}>Beneficio per i soci</h4>
+      {conv.beneficio && conv.beneficio !== "In definizione" && <p style={{ color:C.text,fontSize:13,fontFamily:F,lineHeight:1.7,margin:"0 0 8px" }}>{conv.beneficio}</p>}
+      {conv.sconto && <div style={{ display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:C.greenDim,borderRadius:10,border:`1px solid ${C.green}33` }}>
+        <span style={{ fontSize:18 }}>🏷️</span>
+        <div style={{ fontSize:14,color:C.green,fontFamily:F,fontWeight:600 }}>{conv.sconto}</div>
+      </div>}
+    </Box>}
+    {conv.codice_convenzione && <Box sx={{ marginBottom:12,borderColor:`${cat.color}33` }}>
+      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 10px" }}>Codice convenzione</h4>
+      <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+        <div style={{ flex:1,background:C.alt,border:`2px dashed ${cat.color}66`,borderRadius:10,padding:"12px 16px",textAlign:"center" }}>
+          <div style={{ fontFamily:"monospace",fontSize:18,color:cat.color,fontWeight:700,letterSpacing:2 }}>{conv.codice_convenzione}</div>
+        </div>
+        <Btn v="ghost" onClick={copiaCodice} sx={{ fontSize:11,padding:"10px 12px",flexShrink:0,borderColor:`${cat.color}44`,color:cat.color }}>{copiato?"✓ Copiato":"Copia"}</Btn>
+      </div>
+    </Box>}
+    {(conv.contatto_nome || conv.contatto_email || conv.contatto_telefono) && <Box sx={{ marginBottom:12 }}>
+      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 10px" }}>Contatto referente</h4>
+      {conv.contatto_nome && <FieldRow icon="👤" label="Nome" value={conv.contatto_nome} />}
+      {conv.contatto_email && <FieldRow icon="✉️" label="Email" value={conv.contatto_email} href={`mailto:${conv.contatto_email}`} />}
+      {conv.contatto_telefono && <FieldRow icon="📞" label="Telefono" value={conv.contatto_telefono} href={`tel:${conv.contatto_telefono}`} />}
+    </Box>}
+    {(conv.indirizzo || conv.citta) && <Box sx={{ marginBottom:12 }}>
+      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 10px" }}>Sede</h4>
+      {conv.indirizzo && <FieldRow icon="📍" label="Indirizzo" value={conv.indirizzo} />}
+      {conv.citta && <FieldRow icon="🏙️" label="Città" value={conv.citta} />}
+      {(conv.indirizzo || conv.citta) && <div style={{ marginTop:10 }}>
+        <Btn v="ghost" onClick={() => window.open(`https://www.google.com/maps/search/${encodeURIComponent([conv.indirizzo,conv.citta].filter(Boolean).join(", "))}`,"_blank")} sx={{ width:"100%",fontSize:11 }}>📍 Apri in Google Maps</Btn>
+      </div>}
+    </Box>}
+    {conv.sito_web && <Box sx={{ marginBottom:12 }}>
+      <Btn v="secondary" onClick={() => window.open(conv.sito_web.startsWith("http")?conv.sito_web:`https://${conv.sito_web}`,"_blank")} sx={{ width:"100%",fontSize:12 }}>🌐 Visita il sito web →</Btn>
+    </Box>}
+    {(conv.data_inizio || conv.data_fine) && <Box sx={{ marginBottom:12 }}>
+      <h4 style={{ fontFamily:S,fontSize:17,color:C.text,margin:"0 0 10px" }}>Validità</h4>
+      <div style={{ display:"flex",gap:16 }}>
+        {conv.data_inizio && <div style={{ fontSize:12,color:C.muted,fontFamily:F }}>📅 Dal: <strong style={{ color:C.text }}>{new Date(conv.data_inizio).toLocaleDateString("it-IT")}</strong></div>}
+        {conv.data_fine ? <div style={{ fontSize:12,color:C.muted,fontFamily:F }}>📅 Al: <strong style={{ color:C.text }}>{new Date(conv.data_fine).toLocaleDateString("it-IT")}</strong></div>
+         : <div style={{ fontSize:12,color:C.green,fontFamily:F }}>Senza scadenza</div>}
+      </div>
+    </Box>}
+    {isAdmin && conv.note_interne && <Box sx={{ marginBottom:12,borderColor:`${C.gold}44`,background:`${C.gold}08` }}>
+      <h4 style={{ fontFamily:S,fontSize:17,color:C.gold,margin:"0 0 8px" }}>🔒 Note interne (solo admin)</h4>
+      <p style={{ color:C.muted,fontSize:13,fontFamily:F,lineHeight:1.7,margin:0 }}>{conv.note_interne}</p>
+    </Box>}
   </div>);
 }
-function ConvenzioniSection({ role, isAdmin, openId, onOpenHandled }) {const [convDB, setConvDB] = useState([]);
-useEffect(() => {
-  async function carica() {
-    const { data, error } = await supabase.from('convenzioni').select('*');
-    if (error) { console.log('Errore:', error); return; }
-    setConvenzioni(data);
-  }
-  carica();
-}, []);
-  const [convenzioni,setConvenzioni]=useState([] ); const [proposte,setProposte]=useState([]);
-  const [preferiti,setPreferiti]=useState([3,5]); const [filtroCateg,setFiltroCateg]=useState("Tutte");
-  const [showFav,setShowFav]=useState(false); const [showFilters,setShowFilters]=useState(false);
-  const [selected,setSelected]=useState(null); const [adminView,setAdminView]=useState("lista");
+function ConvenzioniSection({ role, isAdmin, session, openId, onOpenHandled }) {
+  const [convenzioni,setConvenzioni]=useState([]);
+  const [filtroCateg,setFiltroCateg]=useState("Tutte");
+  const [selected,setSelected]=useState(null);
+  const [proponiForm,setProponiForm]=useState(false);
+  const [proponiInviato,setProponiInviato]=useState(false);
+  const [propForm,setPropForm]=useState({ nome_azienda:"", tipo_servizio:"", contatto:"", note:"" });
+  const [proposteCount,setProposteCount]=useState(0);
+
+  useEffect(() => {
+    async function carica() {
+      const { data, error } = await supabase.from('convenzioni').select('*').order('created_at', { ascending: false });
+      if (!error && data) setConvenzioni(data);
+    }
+    carica();
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    async function contaProposte() {
+      const { count } = await supabase.from('proposte_convenzioni').select('*', { count: 'exact', head: true }).eq('stato', 'in_attesa');
+      setProposteCount(count || 0);
+    }
+    contaProposte();
+  }, [isAdmin]);
+
   useEffect(() => {
     if (!openId || !convenzioni.length) return;
     const c = convenzioni.find(x => x.id === openId);
     if (c) { setSelected(c); onOpenHandled?.(); }
   }, [convenzioni, openId]);
-  const [proponiForm,setProponiForm]=useState(false); const [proponiInviato,setProponiInviato]=useState(false);
-  const [propForm,setPropForm]=useState({nome:"",categoria:"F&B",desc:"",contatto:""});
-  const toggleFav=id=>setPreferiti(fs=>fs.includes(id)?fs.filter(f=>f!==id):[...fs,id]);
-  const filtered=useMemo(()=>convenzioni.filter(c=>{
-    if(showFav&&!preferiti.includes(c.id)) return false;
-    if(filtroCateg!=="Tutte"&&c.categoria!==filtroCateg) return false;
+
+  const inviaPropostaDB = async () => {
+    if (!propForm.nome_azienda.trim()) return;
+    const { error } = await supabase.from('proposte_convenzioni').insert([{
+      nome_azienda: propForm.nome_azienda,
+      tipo_servizio: propForm.tipo_servizio,
+      contatto: propForm.contatto,
+      note: propForm.note,
+      proposto_da: session?.user?.id || null,
+      proposto_email: session?.user?.email || null,
+    }]);
+    if (!error) setProponiInviato(true);
+  };
+
+  const filtered = useMemo(() => convenzioni.filter(c => {
+    if (filtroCateg !== "Tutte" && c.categoria !== filtroCateg) return false;
     return true;
-  }),[convenzioni,preferiti,showFav,filtroCateg]);
-  const attive=filtered.filter(c=>c.attiva); const sospese=filtered.filter(c=>!c.attiva);
-  const inAttesaCount=proposte.filter(p=>p.stato==="in_attesa").length;
-  if(selected) return <ConvScheda conv={selected} role={role} preferiti={preferiti} onToggleFav={toggleFav} onBack={() => setSelected(null)} />;
-  if(proponiForm) return (<div>
+  }), [convenzioni, filtroCateg]);
+
+  const attive = filtered.filter(c => c.attiva !== false);
+  const nonAttive = filtered.filter(c => c.attiva === false);
+
+  if (selected) return <ConvScheda conv={selected} isAdmin={isAdmin} onBack={() => setSelected(null)} />;
+
+  if (proponiForm) return (<div>
     <BackBtn onClick={() => setProponiForm(false)} label="← Torna alle convenzioni" />
-    {proponiInviato?<div style={{ textAlign:"center",padding:"32px 0" }}>
+    {proponiInviato ? <div style={{ textAlign:"center",padding:"32px 0" }}>
       <div style={{ fontSize:48,marginBottom:16 }}>✅</div>
       <h3 style={{ fontFamily:S,fontSize:24,color:C.text,margin:"0 0 8px" }}>Proposta inviata!</h3>
-      <p style={{ color:C.muted,fontFamily:F,fontSize:13,lineHeight:1.6,margin:"0 0 20px" }}>Il board UNIIC ti contatterà entro 5 giorni lavorativi.</p>
-      <Btn onClick={() => { setProponiForm(false); setProponiInviato(false); }}>Torna alle convenzioni →</Btn>
-    </div>:<div>
-      <h3 style={{ fontFamily:S,fontSize:22,color:C.text,margin:"0 0 6px" }}>Proponi la tua impresa</h3>
-      <p style={{ color:C.muted,fontSize:12,fontFamily:F,margin:"0 0 18px",lineHeight:1.6 }}>Offri un vantaggio esclusivo ai soci UNIIC.</p>
-      {[["NOME IMPRESA","nome","text","Es. Lamian SRL"],["DESCRIZIONE OFFERTA","desc","textarea","Descrivi lo sconto…"],["CONTATTO","contatto","text","Email o telefono"]].map(([l,k,t,ph]) => (
+      <p style={{ color:C.muted,fontFamily:F,fontSize:13,lineHeight:1.6,margin:"0 0 20px" }}>Il direttivo UNIIC valuterà la tua proposta.</p>
+      <Btn onClick={() => { setProponiForm(false); setProponiInviato(false); setPropForm({ nome_azienda:"", tipo_servizio:"", contatto:"", note:"" }); }}>Torna alle convenzioni →</Btn>
+    </div> : <div>
+      <h3 style={{ fontFamily:S,fontSize:22,color:C.text,margin:"0 0 6px" }}>Proponi una convenzione</h3>
+      <p style={{ color:C.muted,fontSize:12,fontFamily:F,margin:"0 0 18px",lineHeight:1.6 }}>Suggerisci un partner per il network UNIIC.</p>
+      {[
+        ["NOME AZIENDA / PARTNER","nome_azienda","text","Es. Studio Legale Rossi"],
+        ["TIPO DI SERVIZIO / BENEFICIO","tipo_servizio","textarea","Es. Consulenza legale scontata per i soci…"],
+        ["CONTATTO (se conosciuto)","contatto","text","Email o telefono del referente"],
+        ["NOTE AGGIUNTIVE","note","textarea","Altre informazioni utili…"],
+      ].map(([l,k,t,ph]) => (
         <div key={k} style={{ marginBottom:14 }}>
           <div style={{ fontSize:10,color:C.faint,letterSpacing:.5,fontFamily:F,marginBottom:5 }}>{l}</div>
-          {t==="textarea"?<textarea value={propForm[k]} onChange={e=>setPropForm(f=>({...f,[k]:e.target.value}))} placeholder={ph} rows={4} style={{ width:"100%",background:C.alt,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",color:C.text,fontSize:13,fontFamily:F,boxSizing:"border-box",outline:"none",resize:"vertical" }} />
-          :<input value={propForm[k]} onChange={e=>setPropForm(f=>({...f,[k]:e.target.value}))} placeholder={ph} style={{ width:"100%",background:C.alt,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",color:C.text,fontSize:13,fontFamily:F,boxSizing:"border-box",outline:"none" }} />}
+          {t==="textarea"
+            ? <textarea value={propForm[k]} onChange={e => setPropForm(f => ({...f,[k]:e.target.value}))} placeholder={ph} rows={3} style={{ width:"100%",background:C.alt,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",color:C.text,fontSize:13,fontFamily:F,boxSizing:"border-box",outline:"none",resize:"vertical" }} />
+            : <input value={propForm[k]} onChange={e => setPropForm(f => ({...f,[k]:e.target.value}))} placeholder={ph} style={{ width:"100%",background:C.alt,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",color:C.text,fontSize:13,fontFamily:F,boxSizing:"border-box",outline:"none" }} />}
         </div>
       ))}
-      <Btn onClick={() => setProponiInviato(true)} sx={{ width:"100%" }}>Invia proposta →</Btn>
+      <Btn onClick={inviaPropostaDB} sx={{ width:"100%" }}>Invia proposta →</Btn>
     </div>}
   </div>);
+
   return (<div>
     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16 }}>
-      <SecTitle title="Convenzioni" sub={`${attive.length} attive · ${preferiti.length} preferite`} />
+      <SecTitle title="Convenzioni" sub={`${attive.length} partner convenzionati`} />
     </div>
-    {isAdmin&&inAttesaCount>0&&<div style={{ background:C.goldDim,border:`1px solid ${C.gold}44`,borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:C.gold,fontFamily:F }}>
-      📨 {inAttesaCount} proposta{inAttesaCount>1?"e":""} in attesa di approvazione
+    {isAdmin && proposteCount > 0 && <div style={{ background:C.goldDim,border:`1px solid ${C.gold}44`,borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:C.gold,fontFamily:F }}>
+      📨 {proposteCount} proposta{proposteCount > 1 ? "e" : ""} in attesa di approvazione
     </div>}
-    <div style={{ display:"flex",gap:8,marginBottom:14 }}>
-      <button onClick={() => setShowFav(f=>!f)} style={{ display:"flex",alignItems:"center",gap:6,background:showFav?C.redDim:C.alt,border:`1px solid ${showFav?C.red:C.border}`,borderRadius:20,padding:"7px 12px",color:showFav?C.red:C.muted,fontFamily:F,fontSize:11,cursor:"pointer" }}>
-        {showFav?"❤️":"🤍"} Preferiti{preferiti.length>0?` (${preferiti.length})`:""}
-      </button>
-      <button onClick={() => setProponiForm(true)} style={{ background:C.alt,border:`1px solid ${C.border}`,borderRadius:20,padding:"7px 12px",color:C.muted,fontFamily:F,fontSize:11,cursor:"pointer" }}>+ Proponi</button>
+    <div style={{ display:"flex",gap:8,marginBottom:14,flexWrap:"wrap" }}>
+      <button onClick={() => setProponiForm(true)} style={{ display:"flex",alignItems:"center",gap:6,background:C.greenDim,border:`1px solid ${C.green}44`,borderRadius:20,padding:"7px 12px",color:C.green,fontFamily:F,fontSize:11,cursor:"pointer",fontWeight:600 }}>+ Proponi convenzione</button>
     </div>
     <div style={{ display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4 }}>
-      {CONV_CATEGORIE.map(c=><Pill key={c} active={filtroCateg===c} color={C.red} onClick={() => setFiltroCateg(c)}>{c}</Pill>)}
+      {CONV_CATEGORIE_KEYS.map(k => {
+        const label = k === "Tutte" ? "Tutte" : (CONV_CATEGORIE[k]?.label || k);
+        const color = k === "Tutte" ? C.red : (CONV_CATEGORIE[k]?.color || C.muted);
+        return <Pill key={k} active={filtroCateg===k} color={color} onClick={() => setFiltroCateg(k)}>{label}</Pill>;
+      })}
     </div>
+    {attive.length === 0 && <div style={{ textAlign:"center",padding:"32px 0",color:C.muted,fontFamily:F,fontSize:13 }}>Nessuna convenzione trovata per questa categoria.</div>}
     {attive.map(conv => {
-      const isFav=preferiti.includes(conv.id);
-      const giorni=Math.ceil((new Date(conv.scadenza.split("/").reverse().join("-"))-new Date("2026-03-27"))/(1000*60*60*24));
-      const inScad=giorni<=30&&giorni>0;
-      const isAcc=conv.accesso==="tutti"||(conv.accesso==="sostenitore"&&["sostenitore","direttivo"].includes(role))||(conv.accesso==="direttivo"&&role==="direttivo");
-      return (<Box key={conv.id} onClick={() => setSelected(conv)} sx={{ marginBottom:12,opacity:isAcc?1:.8 }}>
+      const cat = CONV_CATEGORIE[conv.categoria] || CONV_CATEGORIE.altro;
+      const isFutura = conv.data_inizio && new Date(conv.data_inizio) > new Date();
+      const beneficioLabel = conv.beneficio && conv.beneficio !== "In definizione" ? conv.beneficio : (conv.sconto || null);
+      return (<Box key={conv.id} onClick={() => setSelected(conv)} sx={{ marginBottom:12 }}>
         <div style={{ display:"flex",alignItems:"flex-start",gap:12 }}>
-          <div style={{ width:50,height:50,borderRadius:12,background:`${conv.colore}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0 }}>{conv.icon}</div>
+          {conv.logo_url
+            ? <img src={conv.logo_url} alt="" style={{ width:50,height:50,borderRadius:12,objectFit:"contain",background:"#fff",padding:3,flexShrink:0 }} />
+            : <div style={{ width:50,height:50,borderRadius:12,background:`${cat.color}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0 }}>{cat.icon}</div>}
           <div style={{ flex:1,minWidth:0 }}>
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8 }}>
-              <div style={{ fontFamily:S,fontSize:17,color:C.text,fontWeight:700,lineHeight:1.2,flex:1 }}>{conv.nome}</div>
-              <div style={{ display:"flex",gap:4,flexShrink:0 }}>
-                {isFav&&<span>❤️</span>}{conv.nuova&&<Tag label="New" color={C.green} sm />}
-              </div>
+            <div style={{ fontFamily:S,fontSize:17,color:C.text,fontWeight:700,lineHeight:1.2 }}>{conv.partner || conv.nome}</div>
+            {beneficioLabel && <div style={{ fontSize:13,color:cat.color,fontFamily:F,fontWeight:600,margin:"4px 0",lineHeight:1.3 }}>{beneficioLabel}</div>}
+            <div style={{ display:"flex",gap:6,flexWrap:"wrap",marginTop:4 }}>
+              <Tag label={cat.label} color={cat.color} sm />
+              <Tag label="Attiva" color={C.green} sm />
+              {isFutura && <Tag label="In arrivo" color={C.orange} sm />}
             </div>
-            <div style={{ fontSize:13,color:conv.colore,fontFamily:F,fontWeight:600,margin:"4px 0" }}>{conv.titolo_breve}</div>
-            <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-              <Tag label={conv.categoria} color={conv.colore} sm /><AccessoBadge accesso={conv.accesso} />
-              {inScad&&<Tag label={`${giorni}gg`} color={C.orange} sm />}
-            </div>
-            {!isAcc&&<div style={{ fontSize:11,color:C.gold,fontFamily:F,marginTop:6 }}>🔒 Richiede quota {conv.accesso==="sostenitore"?"Sostenitore":"Direttivo"}</div>}
           </div>
         </div>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10 }}>
-          <div style={{ fontSize:11,color:C.faint,fontFamily:F }}>📍 {conv.citta} · {conv.utilizzi} utilizzi</div>
-          <button onClick={e=>{e.stopPropagation();toggleFav(conv.id);}} style={{ background:"none",border:"none",fontSize:16,cursor:"pointer" }}>{isFav?"❤️":"🤍"}</button>
-        </div>
+        {(conv.citta || conv.descrizione_partner) && <div style={{ marginTop:8,fontSize:11,color:C.faint,fontFamily:F,lineHeight:1.5 }}>
+          {conv.citta && <span>📍 {conv.citta}</span>}
+          {conv.citta && conv.descrizione_partner && <span> · </span>}
+          {conv.descrizione_partner && <span>{conv.descrizione_partner.length > 80 ? conv.descrizione_partner.slice(0,80) + "…" : conv.descrizione_partner}</span>}
+        </div>}
       </Box>);
     })}
-    {sospese.length>0&&<div style={{ marginTop:16 }}>
-      <div style={{ fontSize:11,color:C.faint,fontFamily:F,letterSpacing:1,textTransform:"uppercase",marginBottom:10 }}>TEMPORANEAMENTE SOSPESE</div>
-      {sospese.map(conv => (<Box key={conv.id} onClick={() => setSelected(conv)} sx={{ marginBottom:8,opacity:.55 }}>
-        <div style={{ display:"flex",gap:12,alignItems:"center" }}>
-          <div style={{ width:36,height:36,borderRadius:8,background:C.alt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0 }}>{conv.icon}</div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontFamily:S,fontSize:15,color:C.text }}>{conv.nome}</div>
-            <div style={{ display:"flex",gap:6,marginTop:3 }}><Tag label={conv.categoria} color={C.muted} sm /><Tag label="Sospesa" color={C.red} sm /></div>
+    {nonAttive.length > 0 && <div style={{ marginTop:16 }}>
+      <div style={{ fontSize:11,color:C.faint,fontFamily:F,letterSpacing:1,textTransform:"uppercase",marginBottom:10 }}>NON ATTIVE</div>
+      {nonAttive.map(conv => {
+        const cat = CONV_CATEGORIE[conv.categoria] || CONV_CATEGORIE.altro;
+        return (<Box key={conv.id} onClick={() => setSelected(conv)} sx={{ marginBottom:8,opacity:.55 }}>
+          <div style={{ display:"flex",gap:12,alignItems:"center" }}>
+            <div style={{ width:36,height:36,borderRadius:8,background:C.alt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0 }}>{cat.icon}</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontFamily:S,fontSize:15,color:C.text }}>{conv.partner || conv.nome}</div>
+              <div style={{ display:"flex",gap:6,marginTop:3 }}><Tag label={cat.label} color={C.muted} sm /><Tag label="Non attiva" color={C.red} sm /></div>
+            </div>
           </div>
-        </div>
-      </Box>))}
+        </Box>);
+      })}
     </div>}
     <Box sx={{ marginTop:20,textAlign:"center",borderStyle:"dashed",padding:"20px 16px" }}>
       <div style={{ fontSize:28,marginBottom:8 }}>🤝</div>
-      <div style={{ fontFamily:S,fontSize:18,color:C.text,marginBottom:6 }}>Hai un'offerta per i soci?</div>
-      <div style={{ fontSize:12,color:C.muted,fontFamily:F,marginBottom:14,lineHeight:1.5 }}>Proponi la tua impresa nel circuito UNIIC.</div>
-      <Btn onClick={() => setProponiForm(true)} sx={{ fontSize:12 }}>Proponi la tua impresa →</Btn>
+      <div style={{ fontFamily:S,fontSize:18,color:C.text,marginBottom:6 }}>Conosci un'azienda interessata?</div>
+      <div style={{ fontSize:12,color:C.muted,fontFamily:F,marginBottom:14,lineHeight:1.5 }}>Proponi una nuova convenzione per i soci UNIIC.</div>
+      <Btn onClick={() => setProponiForm(true)} sx={{ fontSize:12 }}>Proponi una convenzione →</Btn>
     </Box>
   </div>);
 }
@@ -1909,33 +1930,72 @@ function EventoModal({ record, onClose, onSaved }) {
 
 // ── Convenzioni modal ──────────────────────────────────────────────────────────
 function ConvenzioneModal({ record, onClose, onSaved }) {
-  const VUOTO = { nome:"", categoria:"", descrizione:"", scadenza:"", attiva:true };
-  const [form, setForm] = useState(record ? { nome:record.nome||"", categoria:record.categoria||"", descrizione:record.descrizione||"", scadenza:record.scadenza||"", attiva:record.attiva??true } : { ...VUOTO });
+  const VUOTO = { partner:"", categoria:"salute", descrizione_partner:"", beneficio:"", sconto:"", codice_convenzione:"", contatto_nome:"", contatto_email:"", contatto_telefono:"", indirizzo:"", citta:"", sito_web:"", logo_url:"", data_inizio:"", data_fine:"", attiva:true, note_interne:"" };
+  const fields = ["partner","categoria","descrizione_partner","beneficio","sconto","codice_convenzione","contatto_nome","contatto_email","contatto_telefono","indirizzo","citta","sito_web","logo_url","data_inizio","data_fine","attiva","note_interne"];
+  const init = record ? Object.fromEntries(fields.map(k => [k, record[k] ?? VUOTO[k]])) : { ...VUOTO };
+  const [form, setForm] = useState(init);
   const [saving, setSaving] = useState(false);
   const [errore, setErrore] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const INPUT = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontFamily:F, fontSize:13, width:"100%", boxSizing:"border-box" };
   const LABEL = { fontSize:11, color:C.muted, fontFamily:F, marginBottom:4, display:"block" };
   const submit = async () => {
-    if (!form.nome.trim()) { setErrore("Il nome azienda è obbligatorio."); return; }
+    if (!form.partner.trim()) { setErrore("Il nome partner è obbligatorio."); return; }
     setSaving(true); setErrore("");
+    const payload = { ...form, data_inizio: form.data_inizio || null, data_fine: form.data_fine || null };
     const { error } = record
-      ? await supabase.from('convenzioni').update(form).eq('id', record.id)
-      : await supabase.from('convenzioni').insert([form]);
+      ? await supabase.from('convenzioni').update(payload).eq('id', record.id)
+      : await supabase.from('convenzioni').insert([payload]);
     setSaving(false);
     if (error) { setErrore(error.message); return; }
     onSaved();
   };
+  const catOptions = Object.entries(CONV_CATEGORIE).map(([k,v]) => ({ value:k, label:v.label }));
   return (
     <AdminModal titolo={record ? "Modifica convenzione" : "Aggiungi convenzione"} onClose={onClose} onSubmit={submit} saving={saving} errore={errore}>
-      <div><label style={LABEL}>Nome azienda</label><input style={INPUT} value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Nome azienda" /></div>
-      <div><label style={LABEL}>Categoria</label><input style={INPUT} value={form.categoria} onChange={e => set("categoria", e.target.value)} placeholder="es. Ristorazione, Viaggi…" /></div>
-      <div><label style={LABEL}>Descrizione</label><textarea style={{ ...INPUT, minHeight:70, resize:"vertical" }} value={form.descrizione} onChange={e => set("descrizione", e.target.value)} placeholder="Descrizione convenzione…" /></div>
-      <div><label style={LABEL}>Scadenza</label><input type="date" style={INPUT} value={form.scadenza} onChange={e => set("scadenza", e.target.value)} /></div>
+      <div><label style={LABEL}>Partner *</label><input style={INPUT} value={form.partner} onChange={e => set("partner", e.target.value)} placeholder="Nome partner/azienda" /></div>
+      <div><label style={LABEL}>Categoria</label>
+        <select style={INPUT} value={form.categoria} onChange={e => set("categoria", e.target.value)}>
+          {catOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+      <div><label style={LABEL}>Descrizione partner</label><textarea style={{ ...INPUT, minHeight:60, resize:"vertical" }} value={form.descrizione_partner} onChange={e => set("descrizione_partner", e.target.value)} placeholder="Chi è il partner…" /></div>
+      <div><label style={LABEL}>Beneficio per i soci</label><input style={INPUT} value={form.beneficio} onChange={e => set("beneficio", e.target.value)} placeholder="Cosa ottengono i soci" /></div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Sconto</label><input style={INPUT} value={form.sconto} onChange={e => set("sconto", e.target.value)} placeholder="es. 15% su tutti i servizi" /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Codice convenzione</label><input style={INPUT} value={form.codice_convenzione} onChange={e => set("codice_convenzione", e.target.value)} placeholder="es. UNIIC2026" /></div>
+      </div>
+      <div style={{ borderTop:`1px solid ${C.border}`, margin:"8px 0", paddingTop:8 }}>
+        <div style={{ fontSize:10, color:C.faint, fontFamily:F, letterSpacing:.5, marginBottom:8 }}>CONTATTO REFERENTE</div>
+      </div>
+      <div><label style={LABEL}>Nome referente</label><input style={INPUT} value={form.contatto_nome} onChange={e => set("contatto_nome", e.target.value)} placeholder="Nome e cognome" /></div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Email</label><input style={INPUT} value={form.contatto_email} onChange={e => set("contatto_email", e.target.value)} placeholder="email@partner.it" /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Telefono</label><input style={INPUT} value={form.contatto_telefono} onChange={e => set("contatto_telefono", e.target.value)} placeholder="+39…" /></div>
+      </div>
+      <div style={{ borderTop:`1px solid ${C.border}`, margin:"8px 0", paddingTop:8 }}>
+        <div style={{ fontSize:10, color:C.faint, fontFamily:F, letterSpacing:.5, marginBottom:8 }}>SEDE E WEB</div>
+      </div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Indirizzo</label><input style={INPUT} value={form.indirizzo} onChange={e => set("indirizzo", e.target.value)} placeholder="Via, n." /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Città</label><input style={INPUT} value={form.citta} onChange={e => set("citta", e.target.value)} placeholder="Milano" /></div>
+      </div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Sito web</label><input style={INPUT} value={form.sito_web} onChange={e => set("sito_web", e.target.value)} placeholder="https://…" /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Logo URL</label><input style={INPUT} value={form.logo_url} onChange={e => set("logo_url", e.target.value)} placeholder="https://…/logo.png" /></div>
+      </div>
+      <div style={{ borderTop:`1px solid ${C.border}`, margin:"8px 0", paddingTop:8 }}>
+        <div style={{ fontSize:10, color:C.faint, fontFamily:F, letterSpacing:.5, marginBottom:8 }}>DATE E STATO</div>
+      </div>
+      <div style={{ display:"flex", gap:12 }}>
+        <div style={{ flex:1 }}><label style={LABEL}>Data inizio</label><input type="date" style={INPUT} value={form.data_inizio} onChange={e => set("data_inizio", e.target.value)} /></div>
+        <div style={{ flex:1 }}><label style={LABEL}>Data fine</label><input type="date" style={INPUT} value={form.data_fine} onChange={e => set("data_fine", e.target.value)} /></div>
+      </div>
       <div style={{ display:"flex", alignItems:"center", gap:10 }}>
         <input type="checkbox" id="conv-attiva-cb" checked={form.attiva} onChange={e => set("attiva", e.target.checked)} style={{ width:16, height:16, cursor:"pointer", accentColor:C.gold }} />
         <label htmlFor="conv-attiva-cb" style={{ fontSize:11, color:C.muted, fontFamily:F, cursor:"pointer" }}>Convenzione attiva</label>
       </div>
+      <div><label style={LABEL}>Note interne (solo admin)</label><textarea style={{ ...INPUT, minHeight:50, resize:"vertical" }} value={form.note_interne} onChange={e => set("note_interne", e.target.value)} placeholder="Note riservate al direttivo…" /></div>
     </AdminModal>
   );
 }
@@ -2056,7 +2116,7 @@ function AdminSection({ socioProfilo, session }) {
   const CONF = {
     soci:        { tabella:"soci",        cols:[{k:"nome",l:"Nome"},{k:"email",l:"Email"},{k:"tipo",l:"Tipo"},{k:"attivo",l:"Attivo"}] },
     eventi:      { tabella:"eventi",      cols:[{k:"titolo",l:"Titolo"},{k:"tipo",l:"Tipo"},{k:"data",l:"Data"},{k:"iscrizioni_aperte",l:"Iscrizioni"}] },
-    convenzioni: { tabella:"convenzioni", cols:[{k:"nome",l:"Azienda"},{k:"categoria",l:"Categoria"},{k:"scadenza",l:"Scadenza"},{k:"attiva",l:"Attiva"}] },
+    convenzioni: { tabella:"convenzioni", cols:[{k:"partner",l:"Partner"},{k:"categoria",l:"Categoria"},{k:"beneficio",l:"Beneficio"},{k:"attiva",l:"Attiva"}] },
     articoli:    { tabella:"articoli",    cols:[{k:"titolo",l:"Titolo"},{k:"autore",l:"Autore"},{k:"data_pub",l:"Data"},{k:"pubblicato",l:"Pubbl."}] },
     podcast:     { tabella:"episodi",     cols:[{k:"titolo",l:"Titolo"},{k:"ospiti",l:"Ospiti"},{k:"data_pub",l:"Data"},{k:"durata",l:"Durata"}] },
   };
@@ -2336,7 +2396,7 @@ useEffect(() => {
     switch(tab) {
       case "home":        return <HomeSection onNav={setTab} role={role} socioProfilo={socioProfilo} />;
       case "soci":        return <SociSection role={role} openId={deepLink?.tab==="soci" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
-      case "convenzioni": return <ConvenzioniSection role={role} isAdmin={isAdmin} openId={deepLink?.tab==="convenzioni" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
+      case "convenzioni": return <ConvenzioniSection role={role} isAdmin={isAdmin} session={session} openId={deepLink?.tab==="convenzioni" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
       case "eventi":      return <EventiSection isAdmin={isAdmin} socioProfilo={socioProfilo} openId={deepLink?.tab==="eventi" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
       case "newsletter":  return <NewsletterSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} openId={deepLink?.tab==="newsletter" ? deepLink.id : null} onOpenHandled={()=>setDeepLink(null)} />;
       case "podcast":     return <PodcastSection role={role} isAdmin={isAdmin} socioProfilo={socioProfilo} />;
